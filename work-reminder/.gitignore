@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Production
+dist
+dist-electron
+build
+out
+
+# Misc
+.DS_Store
+*.log
+.env
+.env.local
+.env.production
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Electron
+release
