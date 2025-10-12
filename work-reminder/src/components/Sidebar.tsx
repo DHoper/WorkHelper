@@ -43,10 +43,6 @@ const Sidebar = () => {
       ))}
 
       <div className="flex-1"></div>
-
-      <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full bg-gray-400"></div>
-      </div>
     </aside>
   )
 }
