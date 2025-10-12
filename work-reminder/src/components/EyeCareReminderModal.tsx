@@ -17,7 +17,7 @@ const EyeCareReminderModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="card bg-base-100 w-80 shadow-2xl animate-scale-up" onClick={(e) => e.stopPropagation()}>
+      <div className="card bg-base-100 w-80 min-w-[280px] shadow-2xl border border-base-300/30 animate-scale-up" onClick={(e) => e.stopPropagation()}>
         <div className="card-body p-6 items-center text-center">
           <button
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"

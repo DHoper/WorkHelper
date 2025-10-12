@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Pause, RotateCcw, Settings as SettingsIcon, Eye } from 'lucide-react'
+import { Play, Pause, RotateCcw, Settings as SettingsIcon } from 'lucide-react'
 import EyeCareReminderModal from '../../components/EyeCareReminderModal'
 
 const EyeCare = () => {
@@ -31,24 +31,24 @@ const EyeCare = () => {
   const offset = circumference * (1 - progress / 100)
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6 p-6">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-base-content/60">
-        <Eye size={20} strokeWidth={1.5} />
-        <span className="text-sm">護眼提醒</span>
-      </div>
+    <div className="h-full p-6 bg-white">
+      <div className="max-w-lg mx-auto flex flex-col items-center justify-center h-full gap-6">
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-900">護眼提醒</h2>
+        </div>
 
-      {/* Timer Circle */}
-      <div className="relative">
-        <svg width="220" height="220" viewBox="0 0 140 140" className="-rotate-90">
+        {/* Timer Circle */}
+        <div className="relative p-8 border border-gray-200 rounded-2xl bg-white">
+          <svg width="200" height="200" viewBox="0 0 140 140" className="-rotate-90">
           <circle
             cx="70"
             cy="70"
             r="60"
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
-            className="text-base-300"
+            strokeWidth="5"
+            className="text-gray-200"
           />
           <circle
             cx="70"
@@ -56,113 +56,130 @@ const EyeCare = () => {
             r="60"
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            className="text-primary transition-all duration-300"
+            className="text-gray-900 transition-all duration-300"
           />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-4xl font-light tabular-nums">{formatTime(state.remainingSeconds)}</div>
-          <div className="text-xs text-base-content/50 mt-1">
-            {state.isPaused ? '已暫停' : state.config.enabled ? '運行中' : '已停止'}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="text-4xl font-light text-gray-900">{formatTime(state.remainingSeconds)}</div>
+            <div className="text-xs font-medium text-gray-500 mt-2">
+              {state.isPaused ? '已暫停' : state.config.enabled ? '運行中' : '已停止'}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Controls */}
-      <div className="flex gap-2">
-        <button
-          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all
-            ${state.config.enabled
-              ? 'bg-error/10 hover:bg-error/20 text-error'
-              : 'bg-success/10 hover:bg-success/20 text-success'}`}
-          onClick={async () => {
-            const newState = await window.electronAPI.eyeCare.setConfig({ enabled: !state.config.enabled })
-            setState(newState)
-          }}
-        >
-          {state.config.enabled ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} />}
-        </button>
+        {/* Controls */}
+        <div className="flex items-center justify-center gap-2">
+          <button
+            className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
+              state.config.enabled
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-gray-900 hover:bg-gray-800 text-white'
+            }`}
+            onClick={async () => {
+              const newState = await window.electronAPI.eyeCare.setConfig({ enabled: !state.config.enabled })
+              setState(newState)
+            }}
+          >
+            {state.config.enabled ?
+              <Pause size={18} strokeWidth={2} /> :
+              <Play size={18} strokeWidth={2} />
+            }
+          </button>
 
-        {state.config.enabled && (
-          <>
-            <button
-              className="w-12 h-12 rounded-xl bg-base-200 hover:bg-base-300 text-base-content/70 flex items-center justify-center transition-all"
-              onClick={async () => {
-                const newState = state.isPaused
-                  ? await window.electronAPI.eyeCare.resume()
-                  : await window.electronAPI.eyeCare.pause()
-                setState(newState)
-              }}
-            >
-              {state.isPaused ? <Play size={18} strokeWidth={1.5} /> : <Pause size={18} strokeWidth={1.5} />}
-            </button>
-            <button
-              className="w-12 h-12 rounded-xl bg-base-200 hover:bg-base-300 text-base-content/70 flex items-center justify-center transition-all"
-              onClick={async () => {
-                const newState = await window.electronAPI.eyeCare.restart()
-                setState(newState)
-              }}
-            >
-              <RotateCcw size={18} strokeWidth={1.5} />
-            </button>
-          </>
-        )}
+          {state.config.enabled && (
+            <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-lg">
+              <button
+                className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${
+                  state.isPaused
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                onClick={async () => {
+                  const newState = state.isPaused
+                    ? await window.electronAPI.eyeCare.resume()
+                    : await window.electronAPI.eyeCare.pause()
+                  setState(newState)
+                }}
+              >
+                {state.isPaused ? <Play size={14} strokeWidth={2} /> : <Pause size={14} strokeWidth={2} />}
+              </button>
+              <button
+                className="w-9 h-9 rounded-md text-gray-600 hover:text-gray-900 flex items-center justify-center transition-all"
+                onClick={async () => {
+                  const newState = await window.electronAPI.eyeCare.restart()
+                  setState(newState)
+                }}
+              >
+                <RotateCcw size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
 
-        <div className="w-px bg-base-300 mx-1" />
-
-        <button
-          className="w-12 h-12 rounded-xl bg-base-200 hover:bg-base-300 text-base-content/70 flex items-center justify-center transition-all"
-          onClick={() => setShowSettings(!showSettings)}
-        >
-          <SettingsIcon size={18} strokeWidth={1.5} />
-        </button>
-      </div>
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ml-2 ${
+              showSettings
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+            }`}
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <SettingsIcon size={16} strokeWidth={2} />
+          </button>
+        </div>
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="card bg-base-100 border border-base-300 shadow-sm w-full max-w-xs">
-          <div className="card-body p-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-base-content/60">間隔</span>
-              <input
-                type="range"
-                min="5"
-                max="120"
-                step="5"
-                value={tempInterval}
-                onChange={(e) => setTempInterval(Number(e.target.value))}
-                className="range range-xs range-primary flex-1"
-              />
-              <span className="text-sm font-mono w-12 text-right">{tempInterval}m</span>
-              <button
-                className="btn btn-primary btn-xs btn-square"
-                onClick={async () => {
-                  await window.electronAPI.eyeCare.setConfig({ interval: tempInterval })
-                  setShowSettings(false)
-                }}
-              >
-                ✓
-              </button>
-            </div>
+        <div className="w-full max-w-sm p-4 border border-gray-200 rounded-lg bg-white animate-scale-up">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-900">間隔</h3>
+            <button
+              className="w-7 h-7 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
+              onClick={() => setShowSettings(false)}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min="5"
+              max="120"
+              step="5"
+              value={tempInterval}
+              onChange={(e) => setTempInterval(Number(e.target.value))}
+              className="flex-1 h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900"
+            />
+            <span className="text-sm font-mono font-semibold text-gray-900 w-10 text-right">{tempInterval}</span>
+            <button
+              className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center hover:bg-gray-800 transition-all text-sm"
+              onClick={async () => {
+                await window.electronAPI.eyeCare.setConfig({ interval: tempInterval })
+                setShowSettings(false)
+              }}
+            >
+              ✓
+            </button>
           </div>
         </div>
       )}
 
-      <EyeCareReminderModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onPostpone={async (minutes) => {
-          await window.electronAPI.eyeCare.postpone(minutes)
-          setShowModal(false)
-        }}
-        onSkip={async () => {
-          setShowModal(false)
-          await window.electronAPI.eyeCare.restart()
-        }}
-      />
+        <EyeCareReminderModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onPostpone={async (minutes) => {
+            await window.electronAPI.eyeCare.postpone(minutes)
+            setShowModal(false)
+          }}
+          onSkip={async () => {
+            setShowModal(false)
+            await window.electronAPI.eyeCare.restart()
+          }}
+        />
+      </div>
     </div>
   )
 }

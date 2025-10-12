@@ -1,4 +1,5 @@
 import { BrowserWindow, Notification, app } from 'electron'
+import { log } from './logger'
 
 interface EyeCareConfig {
   interval: number // 分鐘
@@ -14,6 +15,8 @@ class EyeCareService {
   }
   private isPaused: boolean = false
   private mainWindow: BrowserWindow | null = null
+  // 儲存通知引用以防止被 GC 回收（重要！）
+  private activeNotification: Notification | null = null
 
   setMainWindow(window: BrowserWindow) {
     this.mainWindow = window
@@ -106,17 +109,23 @@ class EyeCareService {
 
     // 顯示系統通知（Windows/macOS/Linux原生通知）
     if (Notification.isSupported()) {
-      const notification = new Notification({
+      // 清除舊的通知引用
+      if (this.activeNotification) {
+        this.activeNotification.close()
+      }
+
+      // 創建並儲存新通知引用（防止 GC 回收）
+      this.activeNotification = new Notification({
         title: '👁️ 護眼時間到了',
         body: '該讓眼睛休息了！\n請看向 20 英尺外的物體 20 秒',
-        icon: undefined, // 可以設置應用圖標路徑
-        timeoutType: 'never', // 通知不自動消失
+        icon: undefined,
+        timeoutType: 'never',
         urgency: 'normal',
-        silent: false // 系統提示音
+        silent: false
       })
 
-      notification.on('click', () => {
-        // 點擊通知時顯示應用程式
+      this.activeNotification.on('click', () => {
+        log.info('Eye care notification clicked')
         if (this.mainWindow) {
           if (this.mainWindow.isMinimized()) {
             this.mainWindow.restore()
@@ -126,7 +135,8 @@ class EyeCareService {
         }
       })
 
-      notification.show()
+      this.activeNotification.show()
+      log.info('Eye care reminder triggered')
     }
 
     // 發送完成事件到 renderer
@@ -165,6 +175,11 @@ class EyeCareService {
   // 清理資源（應用退出時調用）
   cleanup() {
     this.stop()
+    if (this.activeNotification) {
+      this.activeNotification.close()
+      this.activeNotification = null
+    }
+    log.info('Eye care service cleaned up')
   }
 }
 

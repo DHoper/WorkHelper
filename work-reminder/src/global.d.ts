@@ -65,6 +65,7 @@ interface ElectronAPI {
     save: (metadata: any, filePath: string) => Promise<number>
     delete: (id: number) => Promise<any>
     update: (id: number, updates: any) => Promise<any>
+    readFile: (filePath: string) => Promise<Buffer>
   }
   transcription: {
     get: (recordingId: number) => Promise<any>

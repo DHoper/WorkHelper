@@ -4,6 +4,12 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
 
+  // 視窗控制 API
+  window: {
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    close: () => ipcRenderer.invoke('window:close')
+  },
+
   // 資料庫 API - 任務
   tasks: {
     getAll: () => ipcRenderer.invoke('db:tasks:getAll'),
@@ -51,11 +57,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resume: () => ipcRenderer.invoke('eyecare:resume'),
     postpone: (minutes: number) => ipcRenderer.invoke('eyecare:postpone', minutes),
     restart: () => ipcRenderer.invoke('eyecare:restart'),
+    // ✅ 正確：過濾事件物件，只傳遞 value
     onTick: (callback: (state: any) => void) => {
-      ipcRenderer.on('eyecare:tick', (_, state) => callback(state))
+      ipcRenderer.on('eyecare:tick', (_event, state) => callback(state))
     },
+    // ✅ 正確：過濾事件物件
     onComplete: (callback: () => void) => {
-      ipcRenderer.on('eyecare:complete', () => callback())
+      ipcRenderer.on('eyecare:complete', (_event) => callback())
     }
   },
 
@@ -64,11 +72,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getState: () => ipcRenderer.invoke('worktime:getState'),
     clockIn: () => ipcRenderer.invoke('worktime:clockIn'),
     clockOut: () => ipcRenderer.invoke('worktime:clockOut'),
+    // ✅ 正確：過濾事件物件，只傳遞 value
     onStateUpdate: (callback: (state: any) => void) => {
-      ipcRenderer.on('worktime:stateUpdate', (_, state) => callback(state))
+      ipcRenderer.on('worktime:stateUpdate', (_event, state) => callback(state))
     },
+    // ✅ 正確：過濾事件物件
     onOffTimeReached: (callback: () => void) => {
-      ipcRenderer.on('worktime:offTimeReached', () => callback())
+      ipcRenderer.on('worktime:offTimeReached', (_event) => callback())
     }
   },
 
@@ -80,7 +90,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     writeFile: (filePath: string, buffer: Buffer) => ipcRenderer.invoke('recording:writeFile', filePath, buffer),
     save: (metadata: any, filePath: string) => ipcRenderer.invoke('recording:save', metadata, filePath),
     delete: (id: number) => ipcRenderer.invoke('recording:delete', id),
-    update: (id: number, updates: any) => ipcRenderer.invoke('recording:update', id, updates)
+    update: (id: number, updates: any) => ipcRenderer.invoke('recording:update', id, updates),
+    readFile: (filePath: string) => ipcRenderer.invoke('recording:readFile', filePath)
   },
 
   // 轉錄服務 API
@@ -96,6 +107,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 // TypeScript 類型定義
 export interface ElectronAPI {
   platform: string
+  window: {
+    minimize: () => Promise<void>
+    close: () => Promise<void>
+  }
   tasks: {
     getAll: () => Promise<any[]>
     getById: (id: number) => Promise<any>
@@ -151,6 +166,7 @@ export interface ElectronAPI {
     save: (metadata: any, filePath: string) => Promise<number>
     delete: (id: number) => Promise<any>
     update: (id: number, updates: any) => Promise<any>
+    readFile: (filePath: string) => Promise<Buffer>
   }
   transcription: {
     get: (recordingId: number) => Promise<any>

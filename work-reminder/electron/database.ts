@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { log } from './logger'
 
 let db: Database.Database | null = null
 
@@ -23,16 +24,25 @@ export function initDatabase(): Database.Database {
   if (db) return db
 
   const dbPath = getDatabasePath()
-  db = new Database(dbPath)
 
-  // 啟用外鍵約束
-  db.pragma('foreign_keys = ON')
+  try {
+    db = new Database(dbPath)
 
-  // 建立表格
-  createTables()
+    // 啟用 WAL 模式以提升性能（重要！）
+    db.pragma('journal_mode = WAL')
 
-  console.log('Database initialized at:', dbPath)
-  return db
+    // 啟用外鍵約束
+    db.pragma('foreign_keys = ON')
+
+    // 建立表格
+    createTables()
+
+    log.info('Database initialized', { path: dbPath })
+    return db
+  } catch (error) {
+    log.error('Database initialization failed', error)
+    throw error
+  }
 }
 
 // 建立所有表格
@@ -51,7 +61,11 @@ function createTables() {
       due_date TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
+    CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
+    CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(is_completed);
   `)
 
   // 上下班記錄表
@@ -64,7 +78,9 @@ function createTables() {
       work_hours REAL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(date)
-    )
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_work_records_date ON work_records(date);
   `)
 
   // 設定表
@@ -163,11 +179,33 @@ export const TaskDB = {
 
   // 更新任務
   update: (id: number, updates: any) => {
-    const fields = Object.keys(updates).map(key => `${key} = @${key}`).join(', ')
-    const stmt = getDatabase().prepare(`
-      UPDATE tasks SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = @id
-    `)
-    return stmt.run({ ...updates, id })
+    try {
+      // 白名單驗證：只允許特定欄位更新
+      const allowedFields = ['title', 'description', 'category', 'priority', 'is_completed', 'due_date']
+      const sanitizedUpdates: any = {}
+
+      for (const key of Object.keys(updates)) {
+        if (allowedFields.includes(key)) {
+          sanitizedUpdates[key] = updates[key]
+        } else {
+          log.warn('Attempted to update disallowed field', { field: key })
+        }
+      }
+
+      const fields = Object.keys(sanitizedUpdates).map(key => `${key} = @${key}`).join(', ')
+      if (!fields) {
+        log.warn('No valid fields to update')
+        return { changes: 0 }
+      }
+
+      const stmt = getDatabase().prepare(`
+        UPDATE tasks SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = @id
+      `)
+      return stmt.run({ ...sanitizedUpdates, id })
+    } catch (error) {
+      log.error('Task update failed', { id, error })
+      throw error
+    }
   },
 
   // 刪除任務
@@ -300,11 +338,33 @@ export const RecordingDB = {
 
   // 更新錄音資訊
   update: (id: number, updates: any) => {
-    const fields = Object.keys(updates).map(key => `${key} = @${key}`).join(', ')
-    const stmt = getDatabase().prepare(`
-      UPDATE recordings SET ${fields} WHERE id = @id
-    `)
-    return stmt.run({ ...updates, id })
+    try {
+      // 白名單驗證：只允許特定欄位更新
+      const allowedFields = ['title', 'tags']
+      const sanitizedUpdates: any = {}
+
+      for (const key of Object.keys(updates)) {
+        if (allowedFields.includes(key)) {
+          sanitizedUpdates[key] = updates[key]
+        } else {
+          log.warn('Attempted to update disallowed recording field', { field: key })
+        }
+      }
+
+      const fields = Object.keys(sanitizedUpdates).map(key => `${key} = @${key}`).join(', ')
+      if (!fields) {
+        log.warn('No valid fields to update for recording')
+        return { changes: 0 }
+      }
+
+      const stmt = getDatabase().prepare(`
+        UPDATE recordings SET ${fields} WHERE id = @id
+      `)
+      return stmt.run({ ...sanitizedUpdates, id })
+    } catch (error) {
+      log.error('Recording update failed', { id, error })
+      throw error
+    }
   },
 
   // 刪除錄音

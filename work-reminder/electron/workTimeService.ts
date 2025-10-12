@@ -1,5 +1,6 @@
 import { BrowserWindow, Notification } from 'electron'
 import { WorkRecordDB } from './database'
+import { log } from './logger'
 
 interface WorkTimeState {
   isClockedIn: boolean
@@ -19,6 +20,8 @@ class WorkTimeService {
   }
   private checkTimerId: NodeJS.Timeout | null = null
   private mainWindow: BrowserWindow | null = null
+  // 儲存通知引用以防止被 GC 回收（重要！）
+  private activeNotification: Notification | null = null
 
   setMainWindow(window: BrowserWindow) {
     this.mainWindow = window
@@ -196,14 +199,21 @@ class WorkTimeService {
   private notifyOffTime() {
     // 顯示系統通知
     if (Notification.isSupported()) {
-      const notification = new Notification({
+      // 清除舊的通知引用
+      if (this.activeNotification) {
+        this.activeNotification.close()
+      }
+
+      // 創建並儲存新通知引用（防止 GC 回收）
+      this.activeNotification = new Notification({
         title: '⏰ 下班時間到了！',
         body: `您已工作滿 9 小時\n現在是 ${this.state.estimatedOffTime}，該下班了！`,
         urgency: 'normal',
         silent: false
       })
 
-      notification.on('click', () => {
+      this.activeNotification.on('click', () => {
+        log.info('Work time notification clicked')
         if (this.mainWindow) {
           if (this.mainWindow.isMinimized()) {
             this.mainWindow.restore()
@@ -213,7 +223,8 @@ class WorkTimeService {
         }
       })
 
-      notification.show()
+      this.activeNotification.show()
+      log.info('Work time off notification triggered', { time: this.state.estimatedOffTime })
     }
 
     // 發送事件到 renderer
@@ -250,6 +261,11 @@ class WorkTimeService {
   // 清理資源（應用退出時調用）
   cleanup() {
     this.stopChecking()
+    if (this.activeNotification) {
+      this.activeNotification.close()
+      this.activeNotification = null
+    }
+    log.info('Work time service cleaned up')
   }
 }
 

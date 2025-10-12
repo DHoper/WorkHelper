@@ -9,7 +9,19 @@
       "Bash(npm install:*)",
       "Bash(npx:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(if not exist \"work-reminder\\resources\" mkdir \"work-reminder\\resources\")",
+      "Bash(test:*)",
+      "mcp__ide__getDiagnostics",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.electronjs.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(tree:*)",
+      "Bash(cp:*)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

@@ -14,28 +14,39 @@ const Sidebar = () => {
     { path: '/eyecare', icon: Eye, tooltip: '護眼提醒' },
     { path: '/tasks', icon: CheckSquare, tooltip: '代辦事項' },
     { path: '/worktime', icon: Clock, tooltip: '下班提醒' },
-    { path: '/recording', icon: Mic, disabled: true, tooltip: '會議錄音' },
+    { path: '/recording', icon: Mic, tooltip: '會議錄音' },
     { path: '/settings', icon: Settings, tooltip: '設定' },
   ]
 
   return (
-    <aside className="w-14 bg-base-100 flex flex-col items-center py-4 gap-2 border-r border-base-200">
+    <aside className="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-6 gap-2">
+      <div className="mb-4">
+        <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center">
+          <span className="text-white font-bold text-lg">W</span>
+        </div>
+      </div>
+
       {navItems.map(item => (
         <div key={item.path} className="tooltip tooltip-right" data-tip={item.tooltip}>
           <NavLink
             to={item.path}
             className={({ isActive }) =>
-              `w-10 h-10 rounded-lg flex items-center justify-center transition-all
+              `w-11 h-11 rounded-lg flex items-center justify-center transition-all
               ${isActive
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'}
-              ${item.disabled ? 'opacity-30 pointer-events-none' : ''}`
+                ? 'bg-gray-900 text-white'
+                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`
             }
           >
-            <item.icon size={18} strokeWidth={1.5} />
+            <item.icon size={18} strokeWidth={2} />
           </NavLink>
         </div>
       ))}
+
+      <div className="flex-1"></div>
+
+      <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-full bg-gray-400"></div>
+      </div>
     </aside>
   )
 }

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import TitleBar from './components/TitleBar'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard/Dashboard'
 import EyeCare from './pages/EyeCare/EyeCare'
@@ -11,18 +12,21 @@ import './index.css'
 function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen overflow-hidden" data-theme="light">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-base-200">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/eyecare" element={<EyeCare />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/worktime" element={<WorkTime />} />
-            <Route path="/recording" element={<Recording />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </main>
+      <div className="flex flex-col h-screen overflow-hidden min-w-[520px]" data-theme="light">
+        <TitleBar />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto bg-gray-50 min-w-0">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/eyecare" element={<EyeCare />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/worktime" element={<WorkTime />} />
+              <Route path="/recording" element={<Recording />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </BrowserRouter>
   )

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "桌面提醒程式 - 護眼提醒、代辦事項、下班時間提醒",
   "main": "dist-electron/main.js",
-  "author": "",
+  "author": "Work Reminder Team",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -11,11 +11,14 @@
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",
+    "electron-log": "^5.4.3",
     "lucide-react": "^0.545.0",
+    "menubar": "^9.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.9.4",

@@ -1,226 +1,291 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain } from 'electron'
 import path from 'path'
+import { menubar } from 'menubar'
 import { initDatabase, closeDatabase, TaskDB, WorkRecordDB, SettingDB, ReminderDB, RecordingDB, TranscriptionDB } from './database'
 import { eyeCareService } from './eyeCareService'
 import { workTimeService } from './workTimeService'
 import { recordingService } from './recordingService'
+import { log, setupLogger } from './logger'
+import { registerShortcuts, unregisterShortcuts } from './shortcuts'
+import { setupSingleInstance } from './singleInstance'
+import { createAppMenu } from './menu'
 
-let mainWindow: BrowserWindow | null = null
-let tray: Tray | null = null
+let isQuitting = false
 
-const createWindow = () => {
-  mainWindow = new BrowserWindow({
-    width: 600,
-    height: 500,
-    minWidth: 500,
-    minHeight: 450,
+// 初始化日誌系統（最優先）
+setupLogger()
+
+// 確定托盤圖標路徑
+const getTrayIconPath = (): string => {
+  if (process.platform === 'win32') {
+    return path.join(__dirname, '../resources/tray-icon.ico')
+  } else if (process.platform === 'darwin') {
+    return path.join(__dirname, '../resources/tray-iconTemplate.png')
+  } else {
+    return path.join(__dirname, '../resources/tray-icon.png')
+  }
+}
+
+// 使用 menubar 創建托盤應用
+// menubar 自動處理所有托盤相關的跨平台問題
+const mb = menubar({
+  icon: getTrayIconPath(),
+  index: process.env.VITE_DEV_SERVER_URL || `file://${path.join(__dirname, '../dist/index.html')}`,
+  tooltip: '工作助手',
+  browserWindow: {
+    width: 520,
+    height: 600,
+    minWidth: 520,
+    minHeight: 600,
+    maxWidth: 520,
+    maxHeight: 600,
+    resizable: false,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     },
-    autoHideMenuBar: true,
+    backgroundColor: '#ffffff',
     show: false
+  },
+  preloadWindow: true,
+  showDockIcon: false
+})
+
+// menubar ready 事件：應用和托盤已準備就緒
+mb.on('ready', () => {
+  log.info('Menubar app ready', {
+    version: app.getVersion(),
+    platform: process.platform,
+    isPackaged: app.isPackaged
   })
 
-  mainWindow.once('ready-to-show', async () => {
-    mainWindow?.show()
-    // 設置護眼服務的主視窗引用
-    eyeCareService.setMainWindow(mainWindow!)
-    // 設置上下班服務的主視窗引用
-    workTimeService.setMainWindow(mainWindow!)
-    // 初始化上下班服務（檢查今天是否已打卡）
-    await workTimeService.initialize()
-  })
+  // 初始化資料庫
+  initDatabase()
 
-  // 開發環境載入 Vite 伺服器，生產環境載入打包後的檔案
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-    mainWindow.webContents.openDevTools()
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+  // 設置 IPC handlers
+  setupIpcHandlers()
+  handleWindowControl()
+
+  // 多開防護
+  if (!setupSingleInstance(mb.window!)) {
+    app.quit()
+    return
   }
 
-  // 點擊關閉時隱藏到系統托盤
-  mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault()
-      mainWindow?.hide()
-    }
-  })
-}
+  // 註冊快捷鍵
+  if (mb.window) {
+    registerShortcuts(mb.window)
+    createAppMenu(mb.window)
+  }
 
-const createTray = () => {
-  // 創建托盤圖標（暫時使用空圖標，之後需要添加實際圖標）
-  const icon = nativeImage.createEmpty()
-  tray = new Tray(icon)
-
+  // 創建右鍵選單
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: '顯示主視窗',
+      label: '顯示窗口',
       click: () => {
-        mainWindow?.show()
+        mb.showWindow()
       }
     },
     { type: 'separator' },
     {
       label: '退出',
       click: () => {
-        app.isQuitting = true
+        isQuitting = true
         app.quit()
       }
     }
   ])
 
-  tray.setToolTip('工作提醒小幫手')
-  tray.setContextMenu(contextMenu)
-
-  // 點擊托盤圖標顯示主視窗
-  tray.on('click', () => {
-    mainWindow?.show()
-  })
-}
-
-app.whenReady().then(() => {
-  // 初始化資料庫
-  initDatabase()
-
-  // 設置 IPC handlers
-  setupIpcHandlers()
-
-  createWindow()
-  createTray()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
-  })
+  mb.tray.setContextMenu(contextMenu)
+  log.info('Tray context menu configured')
 })
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    // Windows 和 Linux 下不完全退出，保持在托盤
-    // app.quit()
+// 窗口顯示後的處理
+mb.on('after-show', async () => {
+  log.debug('Window shown')
+
+  // 設置服務的主視窗引用
+  if (mb.window) {
+    eyeCareService.setMainWindow(mb.window)
+    workTimeService.setMainWindow(mb.window)
+
+    // 初始化上下班服務（只在第一次顯示時初始化）
+    if (!workTimeService.getState().isInitialized) {
+      await workTimeService.initialize()
+    }
+
+    // 開發環境開啟 DevTools
+    if (process.env.VITE_DEV_SERVER_URL) {
+      mb.window.webContents.openDevTools({ mode: 'detach' })
+    }
   }
 })
 
-// 防止應用被完全關閉
+// 窗口隱藏後的處理
+mb.on('after-hide', () => {
+  log.debug('Window hidden')
+})
+
+// 防止窗口完全關閉
 app.on('before-quit', () => {
-  app.isQuitting = true
+  isQuitting = true
+
+  log.info('Application quitting, cleaning up...')
+
+  // 註銷快捷鍵
+  unregisterShortcuts()
 
   // 清理服務資源
   eyeCareService.cleanup()
   workTimeService.cleanup()
 
+  // 關閉資料庫
   closeDatabase()
 })
+
+// Windows/Linux：不在關閉所有窗口時退出
+app.on('window-all-closed', (e: Event) => {
+  e.preventDefault()
+})
+
+// IPC handler: 處理窗口最小化
+function handleWindowControl() {
+  ipcMain.handle('window:minimize', () => {
+    mb.window?.minimize()
+  })
+
+  ipcMain.handle('window:close', () => {
+    mb.hideWindow()
+  })
+}
+
+/**
+ * IPC handler 錯誤處理包裝器
+ * 自動記錄錯誤並統一錯誤回應格式
+ */
+function handleIPC(channel: string, handler: (...args: any[]) => any) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    try {
+      log.debug(`IPC call: ${channel}`, { args })
+      const result = await handler(...args)
+      return result
+    } catch (error) {
+      log.error(`IPC error: ${channel}`, { error, args })
+      throw error
+    }
+  })
+}
 
 // 設置 IPC handlers
 function setupIpcHandlers() {
   // 任務相關
-  ipcMain.handle('db:tasks:getAll', () => TaskDB.getAll())
-  ipcMain.handle('db:tasks:getById', (_, id: number) => TaskDB.getById(id))
-  ipcMain.handle('db:tasks:getByCategory', (_, category: string) => TaskDB.getByCategory(category))
-  ipcMain.handle('db:tasks:create', (_, task: any) => TaskDB.create(task))
-  ipcMain.handle('db:tasks:update', (_, id: number, updates: any) => TaskDB.update(id, updates))
-  ipcMain.handle('db:tasks:delete', (_, id: number) => TaskDB.delete(id))
-  ipcMain.handle('db:tasks:toggleComplete', (_, id: number) => TaskDB.toggleComplete(id))
+  handleIPC('db:tasks:getAll', () => TaskDB.getAll())
+  handleIPC('db:tasks:getById', (id: number) => TaskDB.getById(id))
+  handleIPC('db:tasks:getByCategory', (category: string) => TaskDB.getByCategory(category))
+  handleIPC('db:tasks:create', (task: any) => TaskDB.create(task))
+  handleIPC('db:tasks:update', (id: number, updates: any) => TaskDB.update(id, updates))
+  handleIPC('db:tasks:delete', (id: number) => TaskDB.delete(id))
+  handleIPC('db:tasks:toggleComplete', (id: number) => TaskDB.toggleComplete(id))
 
   // 上下班記錄相關
-  ipcMain.handle('db:workRecords:getAll', () => WorkRecordDB.getAll())
-  ipcMain.handle('db:workRecords:getByDate', (_, date: string) => WorkRecordDB.getByDate(date))
-  ipcMain.handle('db:workRecords:getByDateRange', (_, startDate: string, endDate: string) =>
+  handleIPC('db:workRecords:getAll', () => WorkRecordDB.getAll())
+  handleIPC('db:workRecords:getByDate', (date: string) => WorkRecordDB.getByDate(date))
+  handleIPC('db:workRecords:getByDateRange', (startDate: string, endDate: string) =>
     WorkRecordDB.getByDateRange(startDate, endDate))
-  ipcMain.handle('db:workRecords:create', (_, record: any) => WorkRecordDB.create(record))
-  ipcMain.handle('db:workRecords:update', (_, date: string, updates: any) => WorkRecordDB.update(date, updates))
-  ipcMain.handle('db:workRecords:delete', (_, id: number) => WorkRecordDB.delete(id))
+  handleIPC('db:workRecords:create', (record: any) => WorkRecordDB.create(record))
+  handleIPC('db:workRecords:update', (date: string, updates: any) => WorkRecordDB.update(date, updates))
+  handleIPC('db:workRecords:delete', (id: number) => WorkRecordDB.delete(id))
 
   // 設定相關
-  ipcMain.handle('db:settings:get', (_, key: string) => SettingDB.get(key))
-  ipcMain.handle('db:settings:set', (_, key: string, value: string) => SettingDB.set(key, value))
-  ipcMain.handle('db:settings:delete', (_, key: string) => SettingDB.delete(key))
+  handleIPC('db:settings:get', (key: string) => SettingDB.get(key))
+  handleIPC('db:settings:set', (key: string, value: string) => SettingDB.set(key, value))
+  handleIPC('db:settings:delete', (key: string) => SettingDB.delete(key))
 
   // 提醒記錄相關
-  ipcMain.handle('db:reminders:getRecent', (_, limit?: number) => ReminderDB.getRecent(limit))
-  ipcMain.handle('db:reminders:create', (_, reminder: any) => ReminderDB.create(reminder))
-  ipcMain.handle('db:reminders:dismiss', (_, id: number) => ReminderDB.dismiss(id))
-  ipcMain.handle('db:reminders:clearOld', (_, daysAgo?: number) => ReminderDB.clearOld(daysAgo))
+  handleIPC('db:reminders:getRecent', (limit?: number) => ReminderDB.getRecent(limit))
+  handleIPC('db:reminders:create', (reminder: any) => ReminderDB.create(reminder))
+  handleIPC('db:reminders:dismiss', (id: number) => ReminderDB.dismiss(id))
+  handleIPC('db:reminders:clearOld', (daysAgo?: number) => ReminderDB.clearOld(daysAgo))
 
   // 護眼服務相關
-  ipcMain.handle('eyecare:getState', () => eyeCareService.getState())
-  ipcMain.handle('eyecare:setConfig', (_, config: any) => {
+  handleIPC('eyecare:getState', () => eyeCareService.getState())
+  handleIPC('eyecare:setConfig', (config: any) => {
     eyeCareService.setConfig(config)
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:start', () => {
+  handleIPC('eyecare:start', () => {
     eyeCareService.start()
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:stop', () => {
+  handleIPC('eyecare:stop', () => {
     eyeCareService.stop()
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:pause', () => {
+  handleIPC('eyecare:pause', () => {
     eyeCareService.pause()
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:resume', () => {
+  handleIPC('eyecare:resume', () => {
     eyeCareService.resume()
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:postpone', (_, minutes: number) => {
+  handleIPC('eyecare:postpone', (minutes: number) => {
     eyeCareService.postpone(minutes)
     return eyeCareService.getState()
   })
-  ipcMain.handle('eyecare:restart', () => {
+  handleIPC('eyecare:restart', () => {
     eyeCareService.restart()
     return eyeCareService.getState()
   })
 
   // 上下班服務相關
-  ipcMain.handle('worktime:getState', () => workTimeService.getState())
-  ipcMain.handle('worktime:clockIn', async () => {
+  handleIPC('worktime:getState', () => workTimeService.getState())
+  handleIPC('worktime:clockIn', async () => {
     return await workTimeService.clockIn()
   })
-  ipcMain.handle('worktime:clockOut', async () => {
+  handleIPC('worktime:clockOut', async () => {
     return await workTimeService.clockOut()
   })
 
   // 錄音相關
-  ipcMain.handle('recording:getAll', () => recordingService.getAllRecordings())
-  ipcMain.handle('recording:getById', (_, id: number) => recordingService.getRecording(id))
-  ipcMain.handle('recording:getFilePath', (_, format: string) => recordingService.generateFilePath(format))
-  ipcMain.handle('recording:writeFile', async (_, filePath: string, data: Uint8Array | Buffer) => {
-    // 寫入錄音文件
+  handleIPC('recording:getAll', () => recordingService.getAllRecordings())
+  handleIPC('recording:getById', (id: number) => recordingService.getRecording(id))
+  handleIPC('recording:getFilePath', (format: string) => recordingService.generateFilePath(format))
+  handleIPC('recording:writeFile', async (filePath: string, data: Uint8Array | Buffer) => {
     const fs = require('fs')
-    try {
-      // Uint8Array 可以直接寫入
-      fs.writeFileSync(filePath, Buffer.from(data))
-      return { success: true }
-    } catch (error) {
-      console.error('Write file error:', error)
-      throw error
+    // 驗證檔案大小（最大 100MB）
+    const maxSize = 100 * 1024 * 1024
+    if (data.length > maxSize) {
+      throw new Error(`File size exceeds maximum allowed size of ${maxSize} bytes`)
     }
+    fs.writeFileSync(filePath, Buffer.from(data))
+    return { success: true }
   })
-  ipcMain.handle('recording:save', async (_, metadata: any, filePath: string) => {
+  handleIPC('recording:save', async (metadata: any, filePath: string) => {
     return await recordingService.saveRecording(metadata, filePath)
   })
-  ipcMain.handle('recording:delete', async (_, id: number) => {
+  handleIPC('recording:delete', async (id: number) => {
     return await recordingService.deleteRecording(id)
   })
-  ipcMain.handle('recording:update', (_, id: number, updates: any) => {
+  handleIPC('recording:update', (id: number, updates: any) => {
     return recordingService.updateRecording(id, updates)
+  })
+  handleIPC('recording:readFile', async (filePath: string) => {
+    const fs = require('fs')
+    const buffer = fs.readFileSync(filePath)
+    return buffer
   })
 
   // 轉錄相關
-  ipcMain.handle('transcription:get', (_, recordingId: number) => {
+  handleIPC('transcription:get', (recordingId: number) => {
     return recordingService.getTranscription(recordingId)
   })
-  ipcMain.handle('transcription:save', async (_, recordingId: number, content: string, language: string) => {
+  handleIPC('transcription:save', async (recordingId: number, content: string, language: string) => {
     return await recordingService.saveTranscription(recordingId, content, language)
   })
-  ipcMain.handle('transcription:whisper', async (_, filePath: string, apiKey: string) => {
+  handleIPC('transcription:whisper', async (filePath: string, apiKey: string) => {
     return await recordingService.transcribeWithWhisper(filePath, apiKey)
   })
 }

@@ -17,7 +17,10 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['better-sqlite3']
+              external: ['better-sqlite3'],
+              output: {
+                format: 'cjs'
+              }
             }
           }
         }
@@ -29,7 +32,12 @@ export default defineConfig({
         },
         vite: {
           build: {
-            outDir: 'dist-electron'
+            outDir: 'dist-electron',
+            rollupOptions: {
+              output: {
+                format: 'cjs'
+              }
+            }
           }
         }
       }

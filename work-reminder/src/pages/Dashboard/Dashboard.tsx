@@ -36,75 +36,75 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white h-full">
+      {/* Header */}
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-gray-900">工作台</h1>
+      </div>
+
       {/* Status Grid */}
-      <div className="grid grid-cols-2 gap-3 max-w-xl">
+      <div className="grid grid-cols-2 gap-3">
         {/* Eye Care Card */}
-        <div className="card bg-base-100 border border-base-300 hover:shadow-lg transition-all cursor-pointer group">
-          <div className="card-body p-5">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center group-hover:bg-violet-200 transition-colors">
-                <Eye size={24} strokeWidth={1.5} className="text-violet-600" />
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-base-content/60">護眼提醒</div>
-                <div className="text-sm font-medium text-success">運行中</div>
-              </div>
+        <div className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-all bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center">
+              <Eye size={18} strokeWidth={2} className="text-white" />
             </div>
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
           </div>
+          <p className="text-xs text-gray-500">護眼提醒</p>
+          <p className="text-sm font-semibold text-gray-900 mt-0.5">運行中</p>
         </div>
 
         {/* Tasks Card */}
-        <div className="card bg-base-100 border border-base-300 hover:shadow-lg transition-all cursor-pointer group">
-          <div className="card-body p-5">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
-                <CheckSquare size={24} strokeWidth={1.5} className="text-pink-600" />
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-base-content/60">今日任務</div>
-                <div className="text-sm font-medium">
-                  {taskStats.completed} / {taskStats.total}
-                </div>
-              </div>
+        <div className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-all bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center">
+              <CheckSquare size={18} strokeWidth={2} className="text-white" />
             </div>
+            <div className="flex items-center gap-1">
+              <span className="text-lg font-bold text-gray-900">{taskStats.completed}</span>
+              <span className="text-xs text-gray-500">/ {taskStats.total}</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">任務</p>
+          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+            <div
+              className="bg-gray-900 h-1.5 rounded-full transition-all"
+              style={{ width: `${taskStats.total > 0 ? (taskStats.completed / taskStats.total) * 100 : 0}%` }}
+            ></div>
           </div>
         </div>
 
         {/* Work Time Card */}
-        <div className="card bg-base-100 border border-base-300 hover:shadow-lg transition-all cursor-pointer group">
-          <div className="card-body p-5">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <Clock size={24} strokeWidth={1.5} className="text-blue-600" />
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-base-content/60">下班時間</div>
-                {workTimeState.isClockedIn ? (
-                  <div className="text-sm font-medium text-primary">
-                    {workTimeState.estimatedOffTime}
-                  </div>
-                ) : (
-                  <div className="text-sm font-medium text-warning">未打卡</div>
-                )}
-              </div>
+        <div className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-all bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center">
+              <Clock size={18} strokeWidth={2} className="text-white" />
             </div>
+            {workTimeState.isClockedIn ? (
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            ) : (
+              <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+            )}
           </div>
+          <p className="text-xs text-gray-500">下班時間</p>
+          {workTimeState.isClockedIn ? (
+            <p className="text-sm font-semibold text-gray-900 mt-0.5">{workTimeState.estimatedOffTime}</p>
+          ) : (
+            <p className="text-sm font-semibold text-gray-400 mt-0.5">未打卡</p>
+          )}
         </div>
 
         {/* Recording Card */}
-        <div className="card bg-base-100 border border-base-300 hover:shadow-lg transition-all cursor-pointer group">
-          <div className="card-body p-5">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                <Mic size={24} strokeWidth={1.5} className="text-emerald-600" />
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-base-content/60">會議錄音</div>
-                <div className="text-sm font-medium">{recordingCount} 個錄音</div>
-              </div>
+        <div className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-all bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center">
+              <Mic size={18} strokeWidth={2} className="text-white" />
             </div>
+            <span className="text-lg font-bold text-gray-900">{recordingCount}</span>
           </div>
+          <p className="text-xs text-gray-500">錄音</p>
         </div>
       </div>
     </div>

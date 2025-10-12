@@ -2,6 +2,7 @@ import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { RecordingDB, TranscriptionDB } from './database'
+import { log } from './logger'
 
 interface RecordingMetadata {
   title: string
@@ -51,9 +52,10 @@ class RecordingService {
         format: metadata.format,
         tags: metadata.tags || null
       })
+      log.info('Recording saved', { id: result.lastInsertRowid, title: metadata.title })
       return result.lastInsertRowid as number
     } catch (error) {
-      console.error('Save recording error:', error)
+      log.error('Save recording error', { error, filePath })
       throw error
     }
   }
@@ -73,12 +75,14 @@ class RecordingService {
     try {
       const recording = RecordingDB.getById(id) as any
       if (!recording) {
+        log.warn('Attempted to delete non-existent recording', { id })
         throw new Error('錄音不存在')
       }
 
       // 刪除文件
       if (fs.existsSync(recording.file_path)) {
         fs.unlinkSync(recording.file_path)
+        log.info('Recording file deleted', { path: recording.file_path })
       }
 
       // 刪除轉錄
@@ -87,9 +91,10 @@ class RecordingService {
       // 刪除資料庫記錄
       RecordingDB.delete(id)
 
+      log.info('Recording deleted successfully', { id, title: recording.title })
       return { success: true }
     } catch (error) {
-      console.error('Delete recording error:', error)
+      log.error('Delete recording error', { error, id })
       throw error
     }
   }
