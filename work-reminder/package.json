@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",
+    "dotenv": "^17.2.3",
     "electron-log": "^5.4.3",
+    "form-data": "^4.0.4",
     "lucide-react": "^0.545.0",
     "menubar": "^9.5.2",
     "react": "^18.3.1",
@@ -48,7 +50,9 @@
     "productName": "WorkHelper",
     "win": {
       "icon": "resources/tray-icon.ico",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "files": [
       "dist/**/*",

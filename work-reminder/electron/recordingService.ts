@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import FormData from 'form-data'
 import { RecordingDB, TranscriptionDB } from './database'
 import { log } from './logger'
 
@@ -132,16 +133,62 @@ class RecordingService {
     return TranscriptionDB.getByRecordingId(recordingId)
   }
 
-  // 調用 Whisper API 進行轉錄（預留功能）
-  async transcribeWithWhisper(filePath: string, apiKey?: string): Promise<string> {
+  // 調用 Whisper API 進行轉錄
+  async transcribeWithWhisper(filePath: string, apiKey: string): Promise<string> {
     // 檢查是否有 API Key
-    if (!apiKey) {
+    if (!apiKey || apiKey.trim() === '') {
       throw new Error('未設置 Whisper API Key')
     }
 
-    // TODO: 實現 Whisper API 調用
-    // 這裡暫時返回占位文本
-    return '此功能需要配置 Whisper API Key\n請在設置中添加您的 OpenAI API Key'
+    // 檢查文件是否存在
+    if (!fs.existsSync(filePath)) {
+      throw new Error('錄音文件不存在')
+    }
+
+    try {
+      log.info('Starting Whisper transcription', { filePath })
+
+      // 創建 FormData
+      const formData = new FormData()
+      formData.append('file', fs.createReadStream(filePath))
+      formData.append('model', 'whisper-1')
+      formData.append('language', 'zh') // 設定為中文
+      formData.append('response_format', 'text')
+
+      // 調用 OpenAI Whisper API
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          ...formData.getHeaders()
+        },
+        body: formData as any
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        log.error('Whisper API error', { status: response.status, error: errorText })
+
+        if (response.status === 401) {
+          throw new Error('API Key 無效，請檢查您的 OpenAI API Key')
+        } else if (response.status === 429) {
+          throw new Error('API 請求次數超限，請稍後再試')
+        } else {
+          throw new Error(`Whisper API 錯誤: ${response.status} - ${errorText}`)
+        }
+      }
+
+      const transcription = await response.text()
+      log.info('Whisper transcription completed', {
+        filePath,
+        transcriptionLength: transcription.length
+      })
+
+      return transcription
+    } catch (error: any) {
+      log.error('Whisper transcription failed', { error: error.message, filePath })
+      throw error
+    }
   }
 
   // 檢查文件是否存在
