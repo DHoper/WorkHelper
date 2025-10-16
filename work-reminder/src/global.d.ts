@@ -71,6 +71,8 @@ interface ElectronAPI {
     get: (recordingId: number) => Promise<any>
     save: (recordingId: number, content: string, language: string) => Promise<any>
     whisper: (filePath: string, apiKey: string) => Promise<string>
+    generateSummary: (text: string, apiKey: string) => Promise<string>
+    processLongRecording: (filePath: string, apiKey: string) => Promise<{ transcription: string; summary: string }>
   }
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings } from 'lucide-react'
+import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings, Sparkles, FileText } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Toast from '../../components/Toast'
 
@@ -22,17 +22,26 @@ interface Transcription {
   created_at: string
 }
 
+interface Summary {
+  recordingId: number
+  content: string
+  createdAt: string
+}
+
 const Recording = () => {
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackTime, setPlaybackTime] = useState(0)
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; id: number | null }>({ show: false, id: null })
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ show: false, message: '', type: 'info' })
   const [transcriptions, setTranscriptions] = useState<Map<number, Transcription>>(new Map())
+  const [summaries, setSummaries] = useState<Map<number, Summary>>(new Map())
   const [isTranscribing, setIsTranscribing] = useState<number | null>(null)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState<number | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -114,7 +123,7 @@ const Recording = () => {
 
     setIsTranscribing(recording.id)
     try {
-      setToast({ show: true, message: '正在轉錄...', type: 'info' })
+      setToast({ show: true, message: '正在轉錄...可能需要幾分鐘', type: 'info' })
       const transcription = await window.electronAPI.transcription.whisper(recording.file_path, apiKey)
 
       // 保存轉錄結果
@@ -132,9 +141,10 @@ const Recording = () => {
     }
   }
 
-  const handleUploadFile = async () => {
-    if (!selectedFile) {
-      setToast({ show: true, message: '請選擇檔案', type: 'warning' })
+  const generateSummary = async (recording: Recording) => {
+    const transcription = transcriptions.get(recording.id)
+    if (!transcription) {
+      setToast({ show: true, message: '請先生成逐字稿', type: 'warning' })
       return
     }
 
@@ -144,8 +154,72 @@ const Recording = () => {
       return
     }
 
+    setIsGeneratingSummary(recording.id)
     try {
-      setToast({ show: true, message: '正在上傳並轉錄...', type: 'info' })
+      setToast({ show: true, message: '正在生成摘要...', type: 'info' })
+
+      const summary = await window.electronAPI.transcription.generateSummary(transcription.content, apiKey)
+
+      setSummaries(prev => new Map(prev).set(recording.id, {
+        recordingId: recording.id,
+        content: summary,
+        createdAt: new Date().toISOString()
+      }))
+
+      setToast({ show: true, message: '摘要生成完成', type: 'success' })
+    } catch (error: any) {
+      console.error('Summary generation error:', error)
+      setToast({ show: true, message: error.message || '生成摘要失敗', type: 'error' })
+    } finally {
+      setIsGeneratingSummary(null)
+    }
+  }
+
+  const processCompleteRecording = async (recording: Recording) => {
+    if (!apiKey || apiKey.trim() === '') {
+      setToast({ show: true, message: '請先設置 OpenAI API Key', type: 'warning' })
+      setShowApiKeyModal(true)
+      return
+    }
+
+    setIsTranscribing(recording.id)
+    setIsGeneratingSummary(recording.id)
+
+    try {
+      setToast({ show: true, message: '正在處理錄音...這可能需要幾分鐘', type: 'info' })
+
+      // 使用新的完整處理流程
+      const result = await window.electronAPI.transcription.processLongRecording(recording.file_path, apiKey)
+
+      // 保存轉錄結果
+      await window.electronAPI.transcription.save(recording.id, result.transcription, 'zh')
+      await loadTranscription(recording.id)
+
+      // 保存摘要
+      setSummaries(prev => new Map(prev).set(recording.id, {
+        recordingId: recording.id,
+        content: result.summary,
+        createdAt: new Date().toISOString()
+      }))
+
+      setToast({ show: true, message: '處理完成！已生成逐字稿和摘要', type: 'success' })
+    } catch (error: any) {
+      console.error('Processing error:', error)
+      setToast({ show: true, message: error.message || '處理失敗', type: 'error' })
+    } finally {
+      setIsTranscribing(null)
+      setIsGeneratingSummary(null)
+    }
+  }
+
+  const handleUploadFile = async () => {
+    if (!selectedFile) {
+      setToast({ show: true, message: '請選擇檔案', type: 'warning' })
+      return
+    }
+
+    try {
+      setToast({ show: true, message: '正在上傳檔案...', type: 'info' })
 
       // 獲取文件路徑
       const filePath = await window.electronAPI.recording.getFilePath(selectedFile.name.split('.').pop() || 'webm')
@@ -163,22 +237,16 @@ const Recording = () => {
         tags: 'uploaded'
       }
 
-      const recordingId = await window.electronAPI.recording.save(metadata, filePath)
-
-      // 調用 Whisper API 轉錄
-      const transcription = await window.electronAPI.transcription.whisper(filePath, apiKey)
-
-      // 保存轉錄結果
-      await window.electronAPI.transcription.save(recordingId as number, transcription, 'zh')
+      await window.electronAPI.recording.save(metadata, filePath)
 
       // 重新載入錄音列表
       await loadRecordings()
 
       setShowUploadModal(false)
       setSelectedFile(null)
-      setToast({ show: true, message: '上傳並轉錄完成', type: 'success' })
+      setToast({ show: true, message: '檔案上傳成功！您現在可以點擊轉錄按鈕進行轉錄', type: 'success' })
     } catch (error: any) {
-      console.error('Upload and transcribe error:', error)
+      console.error('Upload error:', error)
       setToast({ show: true, message: error.message || '上傳失敗', type: 'error' })
     }
   }
@@ -354,13 +422,13 @@ const Recording = () => {
         </div>
 
         {/* Recording Control */}
-        <div className="p-4 border border-gray-200 rounded-lg mb-4 bg-white">
+        <div className="p-5 border border-gray-200 rounded-lg mb-5 bg-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            <div className="flex items-center gap-4">
+              <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${
                 isRecording ? 'bg-red-500' : 'bg-gray-900'
               }`}>
-                <Mic size={18} className="text-white" strokeWidth={2} />
+                <Mic size={20} className="text-white" strokeWidth={2} />
               </div>
               <div>
                 {isRecording ? (
@@ -417,7 +485,7 @@ const Recording = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className="flex-1 overflow-y-auto space-y-3">
             {recordings.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <FileAudio size={40} strokeWidth={1.5} />
@@ -427,80 +495,123 @@ const Recording = () => {
               recordings.map(recording => (
                 <div
                   key={recording.id}
-                  className={`p-3 border rounded-lg transition-all group ${
+                  className={`p-4 border rounded-lg transition-all group ${
                     selectedRecording?.id === recording.id
                       ? 'border-gray-900 bg-gray-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-4">
                     <button
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      className={`w-11 h-11 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
                         isPlaying && selectedRecording?.id === recording.id
                           ? 'bg-gray-900 text-white'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                       }`}
                       onClick={() => playRecording(recording)}
+                      title={isPlaying && selectedRecording?.id === recording.id ? '暫停' : '播放'}
                     >
                       {isPlaying && selectedRecording?.id === recording.id ? (
-                        <Pause size={14} strokeWidth={2} />
+                        <Pause size={18} strokeWidth={2} />
                       ) : (
-                        <Play size={14} strokeWidth={2} />
+                        <Play size={18} strokeWidth={2} />
                       )}
                     </button>
 
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-gray-900 truncate mb-1">{recording.title}</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 truncate mb-2">{recording.title}</h4>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <Clock size={12} strokeWidth={2} />
-                          {formatTime(recording.duration)}
+                          {isPlaying && selectedRecording?.id === recording.id
+                            ? `${formatTime(playbackTime)} / ${formatTime(recording.duration)}`
+                            : formatTime(recording.duration)}
                         </span>
                         <span>{formatSize(recording.size)}</span>
                         <span>{new Date(recording.created_at).toLocaleDateString('zh-TW')}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                       <button
-                        className="w-9 h-9 rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-500 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => transcribeRecording(recording)}
-                        disabled={isTranscribing === recording.id}
-                        title="Whisper 轉錄"
+                        className="w-10 h-10 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-500 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => processCompleteRecording(recording)}
+                        disabled={isTranscribing === recording.id || isGeneratingSummary === recording.id}
+                        title="完整處理（逐字稿+摘要）"
                       >
-                        <MessageSquare size={16} strokeWidth={2} />
+                        <Sparkles size={18} strokeWidth={2} />
                       </button>
 
                       <button
-                        className="w-9 h-9 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-all"
+                        className="w-10 h-10 rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-500 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => transcribeRecording(recording)}
+                        disabled={isTranscribing === recording.id}
+                        title="生成逐字稿"
+                      >
+                        <MessageSquare size={18} strokeWidth={2} />
+                      </button>
+
+                      <button
+                        className="w-10 h-10 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-500 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => generateSummary(recording)}
+                        disabled={isGeneratingSummary === recording.id || !transcriptions.has(recording.id)}
+                        title="生成摘要"
+                      >
+                        <FileText size={18} strokeWidth={2} />
+                      </button>
+
+                      <button
+                        className="w-10 h-10 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-all"
                         onClick={() => downloadRecording(recording)}
                         title="下載錄音"
                       >
-                        <Download size={16} strokeWidth={2} />
+                        <Download size={18} strokeWidth={2} />
                       </button>
 
                       <button
-                        className="w-9 h-9 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all"
+                        className="w-10 h-10 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all"
                         onClick={() => handleDeleteClick(recording.id)}
                         title="刪除錄音"
                       >
-                        <Trash2 size={16} strokeWidth={2} />
+                        <Trash2 size={18} strokeWidth={2} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Transcription Display */}
-                  {transcriptions.get(recording.id) && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MessageSquare size={14} className="text-purple-500" strokeWidth={2} />
-                        <span className="text-xs font-medium text-gray-700">轉錄文本</span>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
-                          {transcriptions.get(recording.id)?.content}
-                        </p>
-                      </div>
+                  {/* Transcription and Summary Display */}
+                  {(transcriptions.get(recording.id) || summaries.get(recording.id)) && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                      {/* Summary Display */}
+                      {summaries.get(recording.id) && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <Sparkles size={14} className="text-green-500" strokeWidth={2} />
+                            <span className="text-xs font-medium text-gray-700">摘要</span>
+                          </div>
+                          <div className="p-3.5 bg-green-50 rounded-lg">
+                            <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
+                              {summaries.get(recording.id)?.content}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Transcription Display */}
+                      {transcriptions.get(recording.id) && (
+                        <details className="group/details">
+                          <summary className="flex items-center gap-2 cursor-pointer">
+                            <MessageSquare size={14} className="text-purple-500" strokeWidth={2} />
+                            <span className="text-xs font-medium text-gray-700">逐字稿</span>
+                            <span className="text-xs text-gray-500 ml-auto group-open/details:hidden">點擊展開</span>
+                            <span className="text-xs text-gray-500 ml-auto hidden group-open/details:inline">點擊收起</span>
+                          </summary>
+                          <div className="mt-2.5 p-3.5 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
+                            <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
+                              {transcriptions.get(recording.id)?.content}
+                            </p>
+                          </div>
+                        </details>
+                      )}
                     </div>
                   )}
                 </div>
@@ -516,12 +627,17 @@ const Recording = () => {
         ref={audioRef}
         onEnded={() => {
           setIsPlaying(false)
+          setPlaybackTime(0)
           if (currentAudioUrl) {
             URL.revokeObjectURL(currentAudioUrl)
             setCurrentAudioUrl(null)
           }
         }}
         onPause={() => setIsPlaying(false)}
+        onTimeUpdate={(e) => {
+          const audio = e.target as HTMLAudioElement
+          setPlaybackTime(Math.floor(audio.currentTime))
+        }}
       />
 
       {/* Confirm Dialog */}
@@ -634,7 +750,7 @@ const Recording = () => {
 
               <div className="p-3 bg-blue-50 rounded-xl">
                 <p className="text-xs text-blue-700">
-                  上傳的檔案將自動使用 Whisper API 進行轉錄
+                  上傳後，您可以使用轉錄按鈕將音訊轉換為文字
                 </p>
               </div>
             </div>
@@ -654,7 +770,7 @@ const Recording = () => {
                 onClick={handleUploadFile}
                 disabled={!selectedFile}
               >
-                上傳並轉錄
+                上傳
               </button>
             </div>
           </div>

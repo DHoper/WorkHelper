@@ -11,26 +11,44 @@ import { setupSingleInstance } from './singleInstance'
 import { createAppMenu } from './menu'
 
 let isQuitting = false
+let shouldHideWindow = false // 控制窗口是否應該隱藏
 
 // 初始化日誌系統（最優先）
 setupLogger()
 
 // 確定托盤圖標路徑
 const getTrayIconPath = (): string => {
+  // 在開發環境和打包後都使用相同的相對路徑
+  // __dirname 在開發環境指向 electron 目錄，打包後指向 app.asar/dist-electron
+  const basePath = app.isPackaged
+    ? path.join(process.resourcesPath, 'resources')
+    : path.join(__dirname, '../resources')
+
   if (process.platform === 'win32') {
-    return path.join(__dirname, '../resources/tray-icon.ico')
+    return path.join(basePath, 'tray-icon.ico')
   } else if (process.platform === 'darwin') {
-    return path.join(__dirname, '../resources/tray-iconTemplate.png')
+    return path.join(basePath, 'tray-iconTemplate.png')
   } else {
-    return path.join(__dirname, '../resources/tray-icon.png')
+    return path.join(basePath, 'tray-icon.png')
   }
 }
 
 // 使用 menubar 創建托盤應用
 // menubar 自動處理所有托盤相關的跨平台問題
+const getIndexPath = (): string => {
+  if (process.env.VITE_DEV_SERVER_URL) {
+    return process.env.VITE_DEV_SERVER_URL
+  }
+
+  // 在打包後，HTML 檔案位於 resources/app.asar/dist/index.html
+  // __dirname 在打包後指向 resources/app.asar/dist-electron
+  const indexPath = path.join(__dirname, '../dist/index.html')
+  return `file://${indexPath.replace(/\\/g, '/')}`
+}
+
 const mb = menubar({
   icon: getTrayIconPath(),
-  index: process.env.VITE_DEV_SERVER_URL || `file://${path.join(__dirname, '../dist/index.html')}`,
+  index: getIndexPath(),
   tooltip: '工作助手',
   browserWindow: {
     width: 520,
@@ -50,7 +68,10 @@ const mb = menubar({
     show: false
   },
   preloadWindow: true,
-  showDockIcon: false
+  showDockIcon: false,
+  windowPosition: 'center' as any, // 設置視窗居中顯示
+  showOnAllWorkspaces: false,
+  showOnRightClick: false
 })
 
 // menubar ready 事件：應用和托盤已準備就緒
@@ -78,7 +99,25 @@ mb.on('ready', () => {
   if (mb.window) {
     registerShortcuts(mb.window)
     createAppMenu(mb.window)
+
+    // 禁用窗口的自動隱藏行為
+    mb.window.setSkipTaskbar(false) // 顯示在任務欄
   }
+
+  // 完全移除 menubar 的默認點擊行為
+  mb.removeAllListeners('focus-lost')
+  mb.removeAllListeners('blur')
+
+  // 修改托盤圖標點擊行為：只切換顯示/隱藏
+  mb.tray.removeAllListeners('click')
+  mb.tray.on('click', () => {
+    if (mb.window?.isVisible()) {
+      shouldHideWindow = true
+      mb.hideWindow()
+    } else {
+      mb.showWindow()
+    }
+  })
 
   // 創建右鍵選單
   const contextMenu = Menu.buildFromTemplate([
@@ -125,7 +164,9 @@ mb.on('after-show', async () => {
 
 // 窗口隱藏後的處理
 mb.on('after-hide', () => {
-  log.debug('Window hidden')
+  log.debug('Window hidden', { shouldHide: shouldHideWindow })
+  // 重置標誌
+  shouldHideWindow = false
 })
 
 // 防止窗口完全關閉
@@ -150,13 +191,17 @@ app.on('window-all-closed', (e: Event) => {
   e.preventDefault()
 })
 
-// IPC handler: 處理窗口最小化
+// IPC handler: 處理窗口控制
 function handleWindowControl() {
+  // 縮小按鈕：隱藏到托盤
   ipcMain.handle('window:minimize', () => {
-    mb.window?.minimize()
+    shouldHideWindow = true
+    mb.hideWindow()
   })
 
+  // 關閉按鈕：隱藏到托盤
   ipcMain.handle('window:close', () => {
+    shouldHideWindow = true
     mb.hideWindow()
   })
 }
@@ -287,5 +332,11 @@ function setupIpcHandlers() {
   })
   handleIPC('transcription:whisper', async (filePath: string, apiKey: string) => {
     return await recordingService.transcribeWithWhisper(filePath, apiKey)
+  })
+  handleIPC('transcription:generateSummary', async (text: string, apiKey: string) => {
+    return await recordingService.generateSummary(text, apiKey)
+  })
+  handleIPC('transcription:processLongRecording', async (filePath: string, apiKey: string) => {
+    return await recordingService.processLongRecording(filePath, apiKey)
   })
 }

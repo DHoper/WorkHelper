@@ -21,7 +21,8 @@
       "Bash(cp:*)",
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:gist.github.com)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(npm run electron:dev:*)"
     ],
     "deny": [],
     "ask": []

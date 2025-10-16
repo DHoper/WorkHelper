@@ -5,6 +5,7 @@ import renderer from 'vite-plugin-electron-renderer'
 import { resolve } from 'path'
 
 export default defineConfig({
+  base: './',  // 確保使用相對路徑，這對打包後的應用很重要
   plugins: [
     react(),
     electron([

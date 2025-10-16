@@ -100,7 +100,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     save: (recordingId: number, content: string, language: string) =>
       ipcRenderer.invoke('transcription:save', recordingId, content, language),
     whisper: (filePath: string, apiKey: string) =>
-      ipcRenderer.invoke('transcription:whisper', filePath, apiKey)
+      ipcRenderer.invoke('transcription:whisper', filePath, apiKey),
+    generateSummary: (text: string, apiKey: string) =>
+      ipcRenderer.invoke('transcription:generateSummary', text, apiKey),
+    processLongRecording: (filePath: string, apiKey: string) =>
+      ipcRenderer.invoke('transcription:processLongRecording', filePath, apiKey)
   }
 })
 
@@ -172,6 +176,8 @@ export interface ElectronAPI {
     get: (recordingId: number) => Promise<any>
     save: (recordingId: number, content: string, language: string) => Promise<any>
     whisper: (filePath: string, apiKey: string) => Promise<string>
+    generateSummary: (text: string, apiKey: string) => Promise<string>
+    processLongRecording: (filePath: string, apiKey: string) => Promise<{ transcription: string; summary: string }>
   }
 }
 

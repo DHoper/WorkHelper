@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import TitleBar from './components/TitleBar'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -11,7 +11,7 @@ import './index.css'
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="flex flex-col h-screen overflow-hidden min-w-[520px]" data-theme="light">
         <TitleBar />
         <div className="flex flex-1 overflow-hidden">
@@ -28,7 +28,7 @@ function App() {
           </main>
         </div>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
