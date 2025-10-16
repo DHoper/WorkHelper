@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react'
 import { Play, Pause, RotateCcw, Settings as SettingsIcon } from 'lucide-react'
+import { useAppStore } from '../../stores/useAppStore'
 import EyeCareReminderModal from '../../components/EyeCareReminderModal'
 
 const EyeCare = () => {
-  const [state, setState] = useState<any>({
-    remainingSeconds: 0,
-    config: { interval: 60, enabled: true },
-    isPaused: false
-  })
+  const { eyeCare, initializeEyeCare, updateEyeCareState } = useAppStore()
   const [showModal, setShowModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [tempInterval, setTempInterval] = useState(60)
 
   useEffect(() => {
-    window.electronAPI.eyeCare.getState().then(setState)
-    window.electronAPI.eyeCare.onTick((newState) => setState(newState))
-    window.electronAPI.eyeCare.onComplete(() => setShowModal(true))
-  }, [])
+    initializeEyeCare()
+    
+    // 監聽完成事件
+    const unsubscribeComplete = window.electronAPI.eyeCare.onComplete(() => {
+      setShowModal(true)
+    })
+    
+    return () => {
+      unsubscribeComplete()
+      setShowModal(false)
+    }
+  }, [initializeEyeCare])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -24,8 +29,8 @@ const EyeCare = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const progress = state.config.interval > 0
-    ? Math.max(0, Math.min(100, (state.remainingSeconds / (state.config.interval * 60)) * 100))
+  const progress = eyeCare.config.interval > 0
+    ? Math.max(0, Math.min(100, (eyeCare.remainingSeconds / (eyeCare.config.interval * 60)) * 100))
     : 0
   const circumference = 377 // 2 * π * 60
   const offset = circumference * (1 - progress / 100)
@@ -64,9 +69,9 @@ const EyeCare = () => {
           />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-4xl font-light text-gray-900">{formatTime(state.remainingSeconds)}</div>
+            <div className="text-4xl font-light text-gray-900">{formatTime(eyeCare.remainingSeconds)}</div>
             <div className="text-xs font-medium text-gray-500 mt-2">
-              {state.isPaused ? '已暫停' : state.config.enabled ? '運行中' : '已停止'}
+              {eyeCare.isPaused ? '已暫停' : eyeCare.config.enabled ? '運行中' : '已停止'}
             </div>
           </div>
         </div>
@@ -75,43 +80,43 @@ const EyeCare = () => {
         <div className="flex items-center justify-center gap-2">
           <button
             className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
-              state.config.enabled
+              eyeCare.config.enabled
                 ? 'bg-red-500 hover:bg-red-600 text-white'
                 : 'bg-gray-900 hover:bg-gray-800 text-white'
             }`}
             onClick={async () => {
-              const newState = await window.electronAPI.eyeCare.setConfig({ enabled: !state.config.enabled })
-              setState(newState)
+              const newState = await window.electronAPI.eyeCare.setConfig({ enabled: !eyeCare.config.enabled })
+              updateEyeCareState(newState)
             }}
           >
-            {state.config.enabled ?
+            {eyeCare.config.enabled ?
               <Pause size={18} strokeWidth={2} /> :
               <Play size={18} strokeWidth={2} />
             }
           </button>
 
-          {state.config.enabled && (
+          {eyeCare.config.enabled && (
             <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-lg">
               <button
                 className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${
-                  state.isPaused
+                  eyeCare.isPaused
                     ? 'bg-white text-gray-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
                 onClick={async () => {
-                  const newState = state.isPaused
+                  const newState = eyeCare.isPaused
                     ? await window.electronAPI.eyeCare.resume()
                     : await window.electronAPI.eyeCare.pause()
-                  setState(newState)
+                  updateEyeCareState(newState)
                 }}
               >
-                {state.isPaused ? <Play size={14} strokeWidth={2} /> : <Pause size={14} strokeWidth={2} />}
+                {eyeCare.isPaused ? <Play size={14} strokeWidth={2} /> : <Pause size={14} strokeWidth={2} />}
               </button>
               <button
                 className="w-9 h-9 rounded-md text-gray-600 hover:text-gray-900 flex items-center justify-center transition-all"
                 onClick={async () => {
                   const newState = await window.electronAPI.eyeCare.restart()
-                  setState(newState)
+                  updateEyeCareState(newState)
                 }}
               >
                 <RotateCcw size={14} strokeWidth={2} />

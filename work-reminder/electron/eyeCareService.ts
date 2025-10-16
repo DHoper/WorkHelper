@@ -85,8 +85,10 @@ class EyeCareService {
     this.timerId = setInterval(() => {
       this.remainingSeconds--
 
-      // 每秒發送狀態更新
-      this.sendStateUpdate()
+      // 每秒發送狀態更新（只在視窗存在且可見時）
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.sendStateUpdate()
+      }
 
       if (this.remainingSeconds <= 0) {
         this.onComplete()
@@ -96,6 +98,10 @@ class EyeCareService {
 
   private sendStateUpdate() {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      // 只在視窗準備好時發送更新
+      if (this.mainWindow.webContents.isLoading()) {
+        return
+      }
       this.mainWindow.webContents.send('eyecare:tick', {
         remainingSeconds: this.remainingSeconds,
         config: this.config,

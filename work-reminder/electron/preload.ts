@@ -57,13 +57,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resume: () => ipcRenderer.invoke('eyecare:resume'),
     postpone: (minutes: number) => ipcRenderer.invoke('eyecare:postpone', minutes),
     restart: () => ipcRenderer.invoke('eyecare:restart'),
-    // ✅ 正確：過濾事件物件，只傳遞 value
+    // ✅ 正確：過濾事件物件，只傳遞 value，並提供清理函數
     onTick: (callback: (state: any) => void) => {
-      ipcRenderer.on('eyecare:tick', (_event, state) => callback(state))
+      const listener = (_event: any, state: any) => callback(state)
+      ipcRenderer.on('eyecare:tick', listener)
+      return () => ipcRenderer.removeListener('eyecare:tick', listener)
     },
-    // ✅ 正確：過濾事件物件
+    // ✅ 正確：過濾事件物件，並提供清理函數
     onComplete: (callback: () => void) => {
-      ipcRenderer.on('eyecare:complete', (_event) => callback())
+      const listener = () => callback()
+      ipcRenderer.on('eyecare:complete', listener)
+      return () => ipcRenderer.removeListener('eyecare:complete', listener)
     }
   },
 
@@ -72,13 +76,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getState: () => ipcRenderer.invoke('worktime:getState'),
     clockIn: () => ipcRenderer.invoke('worktime:clockIn'),
     clockOut: () => ipcRenderer.invoke('worktime:clockOut'),
-    // ✅ 正確：過濾事件物件，只傳遞 value
+    // ✅ 正確：過濾事件物件，只傳遞 value，並提供清理函數
     onStateUpdate: (callback: (state: any) => void) => {
-      ipcRenderer.on('worktime:stateUpdate', (_event, state) => callback(state))
+      const listener = (_event: any, state: any) => callback(state)
+      ipcRenderer.on('worktime:stateUpdate', listener)
+      return () => ipcRenderer.removeListener('worktime:stateUpdate', listener)
     },
-    // ✅ 正確：過濾事件物件
+    // ✅ 正確：過濾事件物件，並提供清理函數
     onOffTimeReached: (callback: () => void) => {
-      ipcRenderer.on('worktime:offTimeReached', (_event) => callback())
+      const listener = () => callback()
+      ipcRenderer.on('worktime:offTimeReached', listener)
+      return () => ipcRenderer.removeListener('worktime:offTimeReached', listener)
     }
   },
 
@@ -152,15 +160,15 @@ export interface ElectronAPI {
     resume: () => Promise<any>
     postpone: (minutes: number) => Promise<any>
     restart: () => Promise<any>
-    onTick: (callback: (state: any) => void) => void
-    onComplete: (callback: () => void) => void
+    onTick: (callback: (state: any) => void) => () => void
+    onComplete: (callback: () => void) => () => void
   }
   workTime: {
     getState: () => Promise<any>
     clockIn: () => Promise<any>
     clockOut: () => Promise<any>
-    onStateUpdate: (callback: (state: any) => void) => void
-    onOffTimeReached: (callback: () => void) => void
+    onStateUpdate: (callback: (state: any) => void) => () => void
+    onOffTimeReached: (callback: () => void) => () => void
   }
   recording: {
     getAll: () => Promise<any[]>

@@ -63,9 +63,12 @@ function createTables() {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 優化查詢索引
     CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
-    CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
+    CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(is_completed);
+    CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+    CREATE INDEX IF NOT EXISTS idx_tasks_category_completed ON tasks(category, is_completed);
   `)
 
   // 上下班記錄表
@@ -80,7 +83,9 @@ function createTables() {
       UNIQUE(date)
     );
 
-    CREATE INDEX IF NOT EXISTS idx_work_records_date ON work_records(date);
+    -- 優化日期範圍查詢
+    CREATE INDEX IF NOT EXISTS idx_work_records_date ON work_records(date DESC);
+    CREATE INDEX IF NOT EXISTS idx_work_records_created_at ON work_records(created_at DESC);
   `)
 
   // 設定表
@@ -101,7 +106,11 @@ function createTables() {
       message TEXT NOT NULL,
       triggered_at TEXT DEFAULT CURRENT_TIMESTAMP,
       dismissed_at TEXT
-    )
+    );
+    
+    -- 優化提醒查詢
+    CREATE INDEX IF NOT EXISTS idx_reminders_type ON reminders(type);
+    CREATE INDEX IF NOT EXISTS idx_reminders_triggered_at ON reminders(triggered_at DESC);
   `)
 
   // 未來擴展：錄音表
@@ -115,7 +124,11 @@ function createTables() {
       format TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       tags TEXT
-    )
+    );
+    
+    -- 優化錄音查詢（按建立時間排序）
+    CREATE INDEX IF NOT EXISTS idx_recordings_created_at ON recordings(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_recordings_format ON recordings(format);
   `)
 
   // 未來擴展：轉錄表
@@ -128,10 +141,14 @@ function createTables() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE
-    )
+    );
+    
+    -- 優化轉錄查詢
+    CREATE INDEX IF NOT EXISTS idx_transcriptions_recording_id ON transcriptions(recording_id);
+    CREATE INDEX IF NOT EXISTS idx_transcriptions_created_at ON transcriptions(created_at DESC);
   `)
 
-  console.log('Database tables created')
+  log.info('Database tables and indexes created successfully')
 }
 
 // 取得資料庫實例

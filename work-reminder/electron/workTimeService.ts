@@ -8,6 +8,7 @@ interface WorkTimeState {
   clockOutTime: string | null
   estimatedOffTime: string | null
   hasNotified: boolean
+  isInitialized: boolean
 }
 
 class WorkTimeService {
@@ -16,7 +17,8 @@ class WorkTimeService {
     clockInTime: null,
     clockOutTime: null,
     estimatedOffTime: null,
-    hasNotified: false
+    hasNotified: false,
+    isInitialized: false
   }
   private checkTimerId: NodeJS.Timeout | null = null
   private mainWindow: BrowserWindow | null = null
@@ -28,6 +30,11 @@ class WorkTimeService {
   }
 
   async initialize() {
+    // 防止重複初始化
+    if (this.state.isInitialized) {
+      return
+    }
+
     // 檢查今天是否已經打卡
     const today = new Date().toISOString().split('T')[0]
     const record = await WorkRecordDB.getByDate(today)
@@ -51,6 +58,9 @@ class WorkTimeService {
         this.startChecking()
       }
     }
+
+    this.state.isInitialized = true
+    log.info('Work time service initialized', { state: this.state })
   }
 
   async clockIn() {

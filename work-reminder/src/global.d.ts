@@ -6,10 +6,15 @@ interface WorkTimeState {
   clockOutTime: string | null
   estimatedOffTime: string | null
   hasNotified: boolean
+  isInitialized: boolean
 }
 
 interface ElectronAPI {
   platform: string
+  window: {
+    minimize: () => Promise<void>
+    close: () => Promise<void>
+  }
   tasks: {
     getAll: () => Promise<any[]>
     getById: (id: number) => Promise<any>
@@ -47,15 +52,15 @@ interface ElectronAPI {
     resume: () => Promise<any>
     postpone: (minutes: number) => Promise<any>
     restart: () => Promise<any>
-    onTick: (callback: (state: any) => void) => void
-    onComplete: (callback: () => void) => void
+    onTick: (callback: (state: any) => void) => () => void
+    onComplete: (callback: () => void) => () => void
   }
   workTime: {
     getState: () => Promise<WorkTimeState>
     clockIn: () => Promise<WorkTimeState>
     clockOut: () => Promise<WorkTimeState>
-    onStateUpdate: (callback: (state: WorkTimeState) => void) => void
-    onOffTimeReached: (callback: () => void) => void
+    onStateUpdate: (callback: (state: WorkTimeState) => void) => () => void
+    onOffTimeReached: (callback: () => void) => () => void
   }
   recording: {
     getAll: () => Promise<any[]>

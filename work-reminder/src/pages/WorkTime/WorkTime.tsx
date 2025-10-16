@@ -22,10 +22,20 @@ const WorkTime = () => {
 
   useEffect(() => {
     loadState()
-    window.electronAPI.workTime.onStateUpdate((newState) => setState(newState))
-    window.electronAPI.workTime.onOffTimeReached(() => {
+    
+    // 設置事件監聽器並獲取清理函數
+    const unsubscribeStateUpdate = window.electronAPI.workTime.onStateUpdate((newState) => {
+      setState(newState)
+    })
+    const unsubscribeOffTime = window.electronAPI.workTime.onOffTimeReached(() => {
       // 下班時間到了的提示已由系統通知處理
     })
+    
+    // 清理函數：移除事件監聽器
+    return () => {
+      unsubscribeStateUpdate()
+      unsubscribeOffTime()
+    }
   }, [])
 
   const loadState = async () => {
