@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { Task, TaskInput } from '../types/task'
 
 // Types
 interface EyeCareState {
@@ -14,17 +15,6 @@ interface WorkTimeState {
   estimatedOffTime: string | null
   hasNotified: boolean
   isInitialized: boolean
-}
-
-interface Task {
-  id: number
-  title: string
-  description: string | null
-  category: 'daily' | 'weekly' | 'monthly' | 'temporary'
-  priority: 'low' | 'medium' | 'high'
-  is_completed: number
-  due_date: string | null
-  created_at: string
 }
 
 interface AppStore {
@@ -51,7 +41,7 @@ interface AppStore {
   updateWorkTimeState: (state: WorkTimeState) => void
   
   loadTasks: () => Promise<void>
-  addTask: (task: Partial<Task>) => Promise<void>
+  addTask: (task: TaskInput) => Promise<void>
   updateTask: (id: number, updates: Partial<Task>) => Promise<void>
   deleteTask: (id: number) => Promise<void>
   toggleTask: (id: number) => Promise<void>
@@ -146,7 +136,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
   
-  addTask: async (task: Partial<Task>) => {
+  addTask: async (task: TaskInput) => {
     try {
       await window.electronAPI.tasks.create(task)
       await get().loadTasks()

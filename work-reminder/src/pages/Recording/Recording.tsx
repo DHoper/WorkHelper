@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings, Sparkles, FileText, Edit2, Tag, Search, Filter, Volume2 } from 'lucide-react'
+import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings, Sparkles, FileText, Edit2, Search, Volume2 } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Toast from '../../components/Toast'
 
@@ -50,7 +50,6 @@ const Recording = () => {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterTags, setFilterTags] = useState<string[]>([])
   const [editingRecordingId, setEditingRecordingId] = useState<number | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
 
@@ -518,9 +517,7 @@ const Recording = () => {
   }
 
   const filteredRecordings = recordings.filter(recording => {
-    const matchesSearch = recording.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTags = filterTags.length === 0 || (recording.tags && filterTags.some(tag => recording.tags?.includes(tag)))
-    return matchesSearch && matchesTags
+    return recording.title.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
   return (

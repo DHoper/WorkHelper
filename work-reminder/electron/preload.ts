@@ -113,6 +113,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('transcription:generateSummary', text, apiKey),
     processLongRecording: (filePath: string, apiKey: string) =>
       ipcRenderer.invoke('transcription:processLongRecording', filePath, apiKey)
+  },
+
+  // Google Calendar API
+  calendar: {
+    initAuth: (clientId: string, clientSecret: string) =>
+      ipcRenderer.invoke('calendar:initAuth', clientId, clientSecret),
+    getAuthUrl: () => ipcRenderer.invoke('calendar:getAuthUrl'),
+    authenticateWithCode: (code: string) =>
+      ipcRenderer.invoke('calendar:authenticateWithCode', code),
+    isAuthenticated: () => ipcRenderer.invoke('calendar:isAuthenticated'),
+    getCalendarList: () => ipcRenderer.invoke('calendar:getCalendarList'),
+    getUpcomingEvents: (hoursAhead: number) =>
+      ipcRenderer.invoke('calendar:getUpcomingEvents', hoursAhead),
+    setKeywords: (keywords: string[]) => ipcRenderer.invoke('calendar:setKeywords', keywords),
+    getKeywords: () => ipcRenderer.invoke('calendar:getKeywords'),
+    setLookAheadMinutes: (minutes: number) =>
+      ipcRenderer.invoke('calendar:setLookAheadMinutes', minutes),
+    startMonitoring: () => ipcRenderer.invoke('calendar:startMonitoring'),
+    stopMonitoring: () => ipcRenderer.invoke('calendar:stopMonitoring'),
+    clearAuth: () => ipcRenderer.invoke('calendar:clearAuth'),
+    onEventReminder: (callback: (data: any) => void) => {
+      const listener = (_event: any, data: any) => callback(data)
+      ipcRenderer.on('calendar:eventReminder', listener)
+      return () => ipcRenderer.removeListener('calendar:eventReminder', listener)
+    }
   }
 })
 
@@ -186,6 +211,21 @@ export interface ElectronAPI {
     whisper: (filePath: string, apiKey: string) => Promise<string>
     generateSummary: (text: string, apiKey: string) => Promise<string>
     processLongRecording: (filePath: string, apiKey: string) => Promise<{ transcription: string; summary: string }>
+  }
+  calendar: {
+    initAuth: (clientId: string, clientSecret: string) => Promise<void>
+    getAuthUrl: () => Promise<string>
+    authenticateWithCode: (code: string) => Promise<void>
+    isAuthenticated: () => Promise<boolean>
+    getCalendarList: () => Promise<any[]>
+    getUpcomingEvents: (hoursAhead: number) => Promise<any[]>
+    setKeywords: (keywords: string[]) => Promise<void>
+    getKeywords: () => Promise<string[]>
+    setLookAheadMinutes: (minutes: number) => Promise<void>
+    startMonitoring: () => Promise<void>
+    stopMonitoring: () => Promise<void>
+    clearAuth: () => Promise<void>
+    onEventReminder: (callback: (data: any) => void) => () => void
   }
 }
 

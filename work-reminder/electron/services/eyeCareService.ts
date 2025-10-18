@@ -1,5 +1,5 @@
 import { BrowserWindow, Notification, app } from 'electron'
-import { log } from './logger'
+import { log } from '../utils/logger'
 
 interface EyeCareConfig {
   interval: number // 分鐘

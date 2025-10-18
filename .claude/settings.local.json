@@ -22,7 +22,10 @@
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:gist.github.com)",
       "Bash(awk:*)",
-      "Bash(npm run electron:dev:*)"
+      "Bash(npm run electron:dev:*)",
+      "Bash(mv:*)",
+      "Bash(where:*)",
+      "Bash(if not exist \"work-reminder\\src\\pages\\Calendar\" mkdir \"work-reminder\\src\\pages\\Calendar\")"
     ],
     "deny": [],
     "ask": []

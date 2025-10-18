@@ -4,7 +4,7 @@
  */
 
 import { Menu, shell, app, BrowserWindow, dialog } from 'electron'
-import { log } from './logger'
+import { log } from '../utils/logger'
 
 export function createAppMenu(mainWindow: BrowserWindow) {
   const isMac = process.platform === 'darwin'

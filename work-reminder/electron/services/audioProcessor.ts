@@ -2,7 +2,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import path from 'path'
 import fs from 'fs'
 import { app } from 'electron'
-import { log } from './logger'
+import { log } from '../utils/logger'
 
 interface AudioSegment {
   path: string

@@ -1,6 +1,6 @@
 import { BrowserWindow, Notification } from 'electron'
-import { WorkRecordDB } from './database'
-import { log } from './logger'
+import { WorkRecordDB } from '../utils/database'
+import { log } from '../utils/logger'
 
 interface WorkTimeState {
   isClockedIn: boolean

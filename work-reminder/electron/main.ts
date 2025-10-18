@@ -1,14 +1,15 @@
 import { app, BrowserWindow, Menu, ipcMain } from 'electron'
 import path from 'path'
 import { menubar } from 'menubar'
-import { initDatabase, closeDatabase, TaskDB, WorkRecordDB, SettingDB, ReminderDB, RecordingDB, TranscriptionDB } from './database'
-import { eyeCareService } from './eyeCareService'
-import { workTimeService } from './workTimeService'
-import { recordingService } from './recordingService'
-import { log, setupLogger } from './logger'
-import { registerShortcuts, unregisterShortcuts } from './shortcuts'
-import { setupSingleInstance } from './singleInstance'
-import { createAppMenu } from './menu'
+import { initDatabase, closeDatabase, TaskDB, WorkRecordDB, SettingDB, ReminderDB, RecordingDB, TranscriptionDB } from './utils/database'
+import { eyeCareService } from './services/eyeCareService'
+import { workTimeService } from './services/workTimeService'
+import { recordingService } from './services/recordingService'
+import { calendarService } from './services/calendarService'
+import { log, setupLogger } from './utils/logger'
+import { registerShortcuts, unregisterShortcuts } from './utils/shortcuts'
+import { setupSingleInstance } from './utils/singleInstance'
+import { createAppMenu } from './config/menu'
 
 let isQuitting = false
 let shouldHideWindow = false // 控制窗口是否應該隱藏
@@ -149,6 +150,7 @@ mb.on('after-show', async () => {
   if (mb.window) {
     eyeCareService.setMainWindow(mb.window)
     workTimeService.setMainWindow(mb.window)
+    calendarService.setMainWindow(mb.window)
 
     // 初始化上下班服務（只在第一次顯示時初始化）
     if (!workTimeService.getState().isInitialized) {
@@ -181,6 +183,7 @@ app.on('before-quit', () => {
   // 清理服務資源
   eyeCareService.cleanup()
   workTimeService.cleanup()
+  calendarService.cleanup()
 
   // 關閉資料庫
   closeDatabase()
@@ -338,5 +341,43 @@ function setupIpcHandlers() {
   })
   handleIPC('transcription:processLongRecording', async (filePath: string, apiKey: string) => {
     return await recordingService.processLongRecording(filePath, apiKey)
+  })
+
+  // Google Calendar 相關
+  handleIPC('calendar:initAuth', async (clientId: string, clientSecret: string) => {
+    return await calendarService.initializeAuth(clientId, clientSecret)
+  })
+  handleIPC('calendar:getAuthUrl', () => {
+    return calendarService.getAuthUrl()
+  })
+  handleIPC('calendar:authenticateWithCode', async (code: string) => {
+    return await calendarService.authenticateWithCode(code)
+  })
+  handleIPC('calendar:isAuthenticated', () => {
+    return calendarService.isAuthenticated()
+  })
+  handleIPC('calendar:getCalendarList', async () => {
+    return await calendarService.getCalendarList()
+  })
+  handleIPC('calendar:getUpcomingEvents', async (hoursAhead: number) => {
+    return await calendarService.getUpcomingEvents(hoursAhead)
+  })
+  handleIPC('calendar:setKeywords', (keywords: string[]) => {
+    calendarService.setKeywords(keywords)
+  })
+  handleIPC('calendar:getKeywords', () => {
+    return calendarService.getKeywords()
+  })
+  handleIPC('calendar:setLookAheadMinutes', (minutes: number) => {
+    calendarService.setLookAheadMinutes(minutes)
+  })
+  handleIPC('calendar:startMonitoring', () => {
+    calendarService.startMonitoring()
+  })
+  handleIPC('calendar:stopMonitoring', () => {
+    calendarService.stopMonitoring()
+  })
+  handleIPC('calendar:clearAuth', async () => {
+    return await calendarService.clearAuth()
   })
 }

@@ -7,6 +7,7 @@ import EyeCare from './pages/EyeCare/EyeCare'
 import Tasks from './pages/Tasks/Tasks'
 import WorkTime from './pages/WorkTime/WorkTime'
 import Recording from './pages/Recording/Recording'
+import Calendar from './pages/Calendar/Calendar'
 import Settings from './pages/Settings/Settings'
 import { useAppStore } from './stores/useAppStore'
 import './index.css'
@@ -34,6 +35,7 @@ function App() {
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/worktime" element={<WorkTime />} />
               <Route path="/recording" element={<Recording />} />
+              <Route path="/calendar" element={<Calendar />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </main>

@@ -2,8 +2,8 @@ import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import FormData from 'form-data'
-import { RecordingDB, TranscriptionDB } from './database'
-import { log } from './logger'
+import { RecordingDB, TranscriptionDB } from '../utils/database'
+import { log } from '../utils/logger'
 import { audioProcessor } from './audioProcessor'
 
 interface RecordingMetadata {
