@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings, Sparkles, FileText, Edit2, Search, Volume2 } from 'lucide-react'
+import { Mic, Square, Play, Pause, Trash2, FileAudio, Clock, Download, MessageSquare, Upload, Settings, Sparkles, FileText, Edit2, Search, Volume2, X } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Toast from '../../components/Toast'
 
@@ -901,7 +901,7 @@ const Recording = () => {
                 className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
                 onClick={() => setShowApiKeyModal(false)}
               >
-                ✕
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
 
@@ -953,7 +953,7 @@ const Recording = () => {
                 className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
                 onClick={() => setShowUploadModal(false)}
               >
-                ✕
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
 

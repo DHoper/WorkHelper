@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Pause, RotateCcw, Settings as SettingsIcon } from 'lucide-react'
+import { Play, Pause, RotateCcw, Settings as SettingsIcon, X, Check } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import EyeCareReminderModal from '../../components/EyeCareReminderModal'
 
@@ -36,15 +36,16 @@ const EyeCare = () => {
   const offset = circumference * (1 - progress / 100)
 
   return (
-    <div className="h-full p-6 bg-white">
+    <div className="h-full p-6 bg-gradient-to-br from-gray-50 to-white">
       <div className="max-w-lg mx-auto flex flex-col items-center justify-center h-full gap-6">
         {/* Header */}
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900">護眼提醒</h2>
+          <h2 className="text-2xl font-bold text-gray-900">護眼提醒</h2>
+          <p className="text-sm text-gray-500 mt-1">定時休息，保護視力</p>
         </div>
 
         {/* Timer Circle */}
-        <div className="relative p-8 border border-gray-200 rounded-2xl bg-white">
+        <div className="relative p-8 border border-gray-200 rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
           <svg width="200" height="200" viewBox="0 0 140 140" className="-rotate-90">
           <circle
             cx="70"
@@ -79,10 +80,10 @@ const EyeCare = () => {
         {/* Controls */}
         <div className="flex items-center justify-center gap-2">
           <button
-            className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
+            className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 shadow-lg ${
               eyeCare.config.enabled
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-gray-900 hover:bg-gray-800 text-white'
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-200'
+                : 'bg-gradient-to-br from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-600 text-white'
             }`}
             onClick={async () => {
               const newState = await window.electronAPI.eyeCare.setConfig({ enabled: !eyeCare.config.enabled })
@@ -138,14 +139,14 @@ const EyeCare = () => {
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="w-full max-w-sm p-4 border border-gray-200 rounded-lg bg-white animate-scale-up">
+        <div className="w-full max-w-sm p-5 border border-gray-200 rounded-xl bg-white shadow-lg animate-scale-up">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-gray-900">間隔</h3>
             <button
               className="w-7 h-7 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
               onClick={() => setShowSettings(false)}
             >
-              ✕
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -156,7 +157,7 @@ const EyeCare = () => {
               step="5"
               value={tempInterval}
               onChange={(e) => setTempInterval(Number(e.target.value))}
-              className="flex-1 h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900"
+              className="range range-sm flex-1 [&::-webkit-slider-thumb]:bg-gray-900 [&::-webkit-slider-runnable-track]:bg-gray-200"
             />
             <span className="text-sm font-mono font-semibold text-gray-900 w-10 text-right">{tempInterval}</span>
             <button
@@ -166,7 +167,7 @@ const EyeCare = () => {
                 setShowSettings(false)
               }}
             >
-              ✓
+              <Check size={16} strokeWidth={2} />
             </button>
           </div>
         </div>

@@ -103,6 +103,17 @@ mb.on('ready', () => {
 
     // 禁用窗口的自動隱藏行為
     mb.window.setSkipTaskbar(false) // 顯示在任務欄
+
+    // 阻止窗口關閉，改為隱藏到托盤
+    mb.window.on('close', (event) => {
+      if (!isQuitting) {
+        event.preventDefault()
+        mb.hideWindow()
+        log.debug('Window close prevented, hiding to tray')
+      } else {
+        log.info('Window closing (app quitting)')
+      }
+    })
   }
 
   // 完全移除 menubar 的默認點擊行為
@@ -189,9 +200,14 @@ app.on('before-quit', () => {
   closeDatabase()
 })
 
-// Windows/Linux：不在關閉所有窗口時退出
-app.on('window-all-closed', (e: Event) => {
-  e.preventDefault()
+// Windows/Linux：不在關閉所有窗口時退出（托盤應用）
+app.on('window-all-closed', () => {
+  // 托盤應用不應該在關閉所有窗口時退出
+  // 僅在用戶從托盤選單明確選擇「退出」時才退出
+  // macOS 上保持應用運行，Windows/Linux 也保持運行
+  if (!isQuitting) {
+    // 不做任何事情，讓應用繼續在托盤中運行
+  }
 })
 
 // IPC handler: 處理窗口控制

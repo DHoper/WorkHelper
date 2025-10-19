@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, CheckSquare, Trash2, Calendar, Search, Filter, SortAsc, TrendingUp, AlertCircle } from 'lucide-react'
+import { Plus, CheckSquare, Trash2, Calendar, Search, Filter, SortAsc, TrendingUp, AlertCircle, X } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Toast from '../../components/Toast'
 import { Task } from '../../types/task'
@@ -89,10 +89,10 @@ const Tasks = () => {
         return false
       }
       // 狀態過濾
-      if (statusFilter === 'completed' && !task.is_completed) {
+      if (statusFilter === 'completed' && task.is_completed === 0) {
         return false
       }
-      if (statusFilter === 'pending' && task.is_completed) {
+      if (statusFilter === 'pending' && task.is_completed === 1) {
         return false
       }
       return true
@@ -117,9 +117,9 @@ const Tasks = () => {
   // 統計數據
   const stats = useMemo(() => ({
     total: tasks.length,
-    completed: tasks.filter(t => t.is_completed).length,
-    pending: tasks.filter(t => !t.is_completed).length,
-    highPriority: tasks.filter(t => !t.is_completed && t.priority === 'high').length
+    completed: tasks.filter(t => t.is_completed === 1).length,
+    pending: tasks.filter(t => t.is_completed === 0).length,
+    highPriority: tasks.filter(t => t.is_completed === 0 && t.priority === 'high').length
   }), [tasks])
 
   const categoryNames = {
@@ -275,7 +275,7 @@ const Tasks = () => {
                     className="mt-0.5"
                     onClick={() => handleToggleComplete(task.id)}
                   >
-                    {task.is_completed ? (
+                    {task.is_completed === 1 ? (
                       <div className="w-5 h-5 rounded bg-gray-900 flex items-center justify-center">
                         <CheckSquare size={14} className="text-white" strokeWidth={3} />
                       </div>
@@ -286,7 +286,7 @@ const Tasks = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className={`text-base font-semibold ${task.is_completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      <h3 className={`text-base font-semibold ${task.is_completed === 1 ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                         {task.title}
                       </h3>
                     </div>
@@ -332,7 +332,7 @@ const Tasks = () => {
                 className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-all"
                 onClick={() => setShowAddModal(false)}
               >
-                ✕
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
 

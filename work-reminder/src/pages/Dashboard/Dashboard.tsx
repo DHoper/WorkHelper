@@ -37,10 +37,10 @@ const Dashboard = () => {
   // 計算任務統計（使用 useMemo 避免重複計算）
   const taskStats = useMemo(() => {
     const total = tasks.length
-    const completed = tasks.filter((t) => t.is_completed).length
+    const completed = tasks.filter((t) => t.is_completed === 1).length
     const pending = total - completed
-    const todayTasks = tasks.filter(t => !t.is_completed && t.category === 'daily')
-    const highPriority = tasks.filter(t => !t.is_completed && t.priority === 'high')
+    const todayTasks = tasks.filter(t => t.is_completed === 0 && t.category === 'daily')
+    const highPriority = tasks.filter(t => t.is_completed === 0 && t.priority === 'high')
 
     return { total, completed, pending, todayTasks: todayTasks.length, highPriority: highPriority.length }
   }, [tasks])
@@ -260,8 +260,8 @@ const Dashboard = () => {
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                   onClick={() => navigate('/tasks')}
                 >
-                  <div className={`w-2 h-2 rounded-full ${task.is_completed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                  <span className={`flex-1 text-sm ${task.is_completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                  <div className={`w-2 h-2 rounded-full ${task.is_completed === 1 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <span className={`flex-1 text-sm ${task.is_completed === 1 ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                     {task.title}
                   </span>
                   <span className={`text-xs px-2 py-1 rounded ${

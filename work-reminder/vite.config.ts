@@ -12,7 +12,10 @@ export default defineConfig({
       {
         entry: 'electron/main.ts',
         onstart(options) {
-          options.startup()
+          // 只在首次啟動時執行，避免熱重載時重複啟動
+          if (options.startup) {
+            options.startup()
+          }
         },
         vite: {
           build: {
@@ -29,7 +32,10 @@ export default defineConfig({
       {
         entry: 'electron/preload.ts',
         onstart(options) {
-          options.reload()
+          // preload 變化時重新加載頁面而不是重啟應用
+          if (options.reload) {
+            options.reload()
+          }
         },
         vite: {
           build: {

@@ -64,15 +64,16 @@ const WorkTime = () => {
   }
 
   return (
-    <div className="h-full p-6 bg-white">
+    <div className="h-full p-6 bg-gradient-to-br from-gray-50 to-white">
       <div className="max-w-lg mx-auto flex flex-col items-center justify-center h-full gap-6">
         {/* Header */}
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900">工時管理</h2>
+          <h2 className="text-2xl font-bold text-gray-900">工時管理</h2>
+          <p className="text-sm text-gray-500 mt-1">記錄工作時間，準時下班</p>
         </div>
 
         {/* Status Card */}
-        <div className="w-full p-6 border border-gray-200 rounded-lg bg-white">
+        <div className="w-full p-6 border border-gray-200 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
           <div>
             {state.isClockedIn ? (
               <div className="space-y-3">
@@ -134,23 +135,23 @@ const WorkTime = () => {
         <div>
           {!state.isClockedIn ? (
             <button
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-900 hover:bg-gray-800 text-white transition-all"
+              className="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-600 text-white transition-all duration-300 transform hover:scale-105 shadow-lg"
               onClick={handleClockIn}
             >
-              <LogIn size={16} strokeWidth={2} />
-              <span className="font-medium">上班打卡</span>
+              <LogIn size={18} strokeWidth={2} />
+              <span className="font-semibold">上班打卡</span>
             </button>
           ) : !state.clockOutTime ? (
             <button
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all"
+              className="flex items-center gap-2 px-8 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-200"
               onClick={handleClockOut}
             >
-              <LogOut size={16} strokeWidth={2} />
-              <span className="font-medium">下班打卡</span>
+              <LogOut size={18} strokeWidth={2} />
+              <span className="font-semibold">下班打卡</span>
             </button>
           ) : (
-            <div className="px-4 py-2 rounded-lg bg-gray-100 border border-gray-200">
-              <span className="text-sm text-gray-600">已完成打卡</span>
+            <div className="px-6 py-3 rounded-xl bg-green-50 border border-green-200">
+              <span className="text-sm font-semibold text-green-700">已完成打卡</span>
             </div>
           )}
         </div>
